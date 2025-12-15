@@ -42,6 +42,20 @@ const WelcomeScreen = ({ onGetStarted }: WelcomeScreenProps) => {
           width: '100%',
         }}
       >
+        {/* Logo */}
+        <Box
+          component="img"
+          src="/wave-logo.png"
+          alt="Wave Music"
+          sx={{
+            width: { xs: 100, sm: 120 },
+            height: { xs: 100, sm: 120 },
+            objectFit: 'contain',
+            mb: 3,
+            filter: 'drop-shadow(0 4px 12px rgba(0, 188, 212, 0.4))',
+          }}
+        />
+        
         {/* App Name */}
         <Typography
           variant="h6"
@@ -53,7 +67,7 @@ const WelcomeScreen = ({ onGetStarted }: WelcomeScreenProps) => {
             fontSize: '0.9rem',
           }}
         >
-          Wave Music
+          WAVE MUSIC
         </Typography>
 
         {/* Main Heading */}

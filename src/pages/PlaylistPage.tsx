@@ -9,6 +9,7 @@ import {
   ListItem,
   ListItemAvatar,
   ListItemText,
+  Button,
 } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import MusicNoteIcon from '@mui/icons-material/MusicNote';
@@ -36,30 +37,36 @@ const PlaylistPage: React.FC<PlaylistPageProps> = ({
 
   // Decode HTML entities in strings
   const decodeHtmlEntities = (text: string): string => {
+    if (!text) return text;
     const textarea = document.createElement('textarea');
     textarea.innerHTML = text;
-    return textarea.value;
+    const decoded = textarea.value;
+    // If still contains entities, try one more time
+    if (decoded.includes('&')) {
+      textarea.innerHTML = decoded;
+      return textarea.value;
+    }
+    return decoded;
   };
 
   useEffect(() => {
+    // Scroll to top when component mounts
+    window.scrollTo(0, 0);
+    
     const fetchPlaylist = async () => {
       try {
         setLoading(true);
         setError(false);
-        console.log('Fetching playlist:', playlistId);
         
         const response = await saavnApi.getPlaylistById(playlistId);
-        console.log('Playlist response:', response);
         
         if (response.success && response.data) {
           const playlistSongs = response.data.songs || [];
           setSongs(playlistSongs);
-          console.log(`Loaded ${playlistSongs.length} songs from playlist`);
         } else {
           setError(true);
         }
       } catch (err) {
-        console.error('Error fetching playlist:', err);
         setError(true);
       } finally {
         setLoading(false);
@@ -101,9 +108,10 @@ const PlaylistPage: React.FC<PlaylistPageProps> = ({
         sx={{
           display: 'flex',
           alignItems: 'center',
-          gap: 2,
+          gap: 1.5,
           px: 2,
-          py: 2,
+          pt: 1.5,
+          pb: 1.5,
           mb: 2,
         }}
       >
@@ -118,7 +126,7 @@ const PlaylistPage: React.FC<PlaylistPageProps> = ({
         >
           <ArrowBackIcon />
         </IconButton>
-        <Typography variant="h6" sx={{ color: 'text.primary', fontWeight: 'bold' }}>
+        <Typography variant="h6" sx={{ color: 'text.primary', fontWeight: 600, fontSize: '1.1rem' }}>
           Playlist
         </Typography>
       </Box>
@@ -130,8 +138,8 @@ const PlaylistPage: React.FC<PlaylistPageProps> = ({
           flexDirection: 'column',
           alignItems: 'center',
           px: 3,
-          pb: 3,
-          mb: 3,
+          pb: 2,
+          mb: 2,
           background: (theme) =>
             theme.palette.mode === 'dark'
               ? 'linear-gradient(180deg, rgba(0, 188, 212, 0.1) 0%, transparent 100%)'
@@ -142,8 +150,8 @@ const PlaylistPage: React.FC<PlaylistPageProps> = ({
           src={playlistImage}
           variant="rounded"
           sx={{
-            width: 200,
-            height: 200,
+            width: 160,
+            height: 160,
             mb: 2,
             boxShadow: '0 8px 24px rgba(0, 0, 0, 0.3)',
           }}
@@ -157,13 +165,41 @@ const PlaylistPage: React.FC<PlaylistPageProps> = ({
             fontWeight: 'bold',
             textAlign: 'center',
             mb: 1,
+            fontSize: '1.25rem',
+            px: 2,
           }}
         >
           {decodeHtmlEntities(playlistName)}
         </Typography>
-        <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+        <Typography variant="body2" sx={{ color: 'text.secondary', mb: 2 }}>
           {songs.length} songs
         </Typography>
+        {songs.length > 0 && (
+          <Button
+            variant="contained"
+            startIcon={<PlayArrowIcon />}
+            onClick={() => {
+              if (songs.length > 0) {
+                onSongSelect(songs[0]);
+              }
+            }}
+            sx={{
+              bgcolor: 'primary.main',
+              color: 'white',
+              px: 4,
+              py: 1.5,
+              borderRadius: '50px',
+              textTransform: 'none',
+              fontWeight: 600,
+              fontSize: '1rem',
+              '&:hover': {
+                bgcolor: 'primary.dark',
+              },
+            }}
+          >
+            Play All
+          </Button>
+        )}
       </Box>
 
       {/* Loading State */}
@@ -265,7 +301,7 @@ const PlaylistPage: React.FC<PlaylistPageProps> = ({
                         whiteSpace: 'nowrap',
                       }}
                     >
-                      {decodeHtmlEntities(song.name)}
+                      {song.name}
                     </Typography>
                   }
                   secondary={
@@ -279,7 +315,7 @@ const PlaylistPage: React.FC<PlaylistPageProps> = ({
                           whiteSpace: 'nowrap',
                         }}
                       >
-                        {decodeHtmlEntities(getArtistNames(song))}
+                        {getArtistNames(song)}
                       </Typography>
                       {song.duration && (
                         <Typography variant="caption" sx={{ color: 'text.disabled' }}>

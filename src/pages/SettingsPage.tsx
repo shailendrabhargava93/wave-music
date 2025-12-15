@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { 
   Box, 
   Typography, 
@@ -9,13 +9,15 @@ import {
   Divider,
   Paper,
   Container,
-  IconButton
+  IconButton,
+  Snackbar,
+  Alert
 } from '@mui/material';
-import Header from '../components/Header';
 import DarkModeIcon from '@mui/icons-material/DarkMode';
 import LightModeIcon from '@mui/icons-material/LightMode';
 import ShareIcon from '@mui/icons-material/Share';
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
+import DeleteSweepIcon from '@mui/icons-material/DeleteSweep';
 
 interface SettingsPageProps {
   isDarkMode: boolean;
@@ -26,6 +28,15 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
   isDarkMode, 
   onThemeToggle
 }) => {
+  const [snackbarOpen, setSnackbarOpen] = useState(false);
+  const [snackbarMessage, setSnackbarMessage] = useState('');
+
+  const handleClearSearchHistory = () => {
+    localStorage.removeItem('recentSearches');
+    setSnackbarMessage('Search history cleared successfully');
+    setSnackbarOpen(true);
+  };
+
   const handleShare = async () => {
     if (navigator.share) {
       try {
@@ -35,7 +46,7 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
           url: window.location.origin,
         });
       } catch (error) {
-        console.log('Error sharing:', error);
+        // Error sharing
       }
     } else {
       // Fallback: copy to clipboard
@@ -43,7 +54,7 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
         await navigator.clipboard.writeText(window.location.origin);
         alert('App link copied to clipboard!');
       } catch (error) {
-        console.log('Error copying to clipboard:', error);
+        // Error copying to clipboard
       }
     }
   };
@@ -53,11 +64,22 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
       sx={{ 
         minHeight: '100vh',
         bgcolor: 'background.default',
-        pb: 10
+        pb: 10,
+        pt: 3
       }}
     >
       <Container maxWidth="md">
-        <Header />
+        <Typography 
+          variant="h5" 
+          sx={{ 
+            color: 'text.primary', 
+            fontWeight: 'bold',
+            mb: 3,
+            px: 2
+          }}
+        >
+          Settings
+        </Typography>
 
         <Paper 
           elevation={0}
@@ -183,6 +205,52 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
             </ListItem>
             
             <Divider />
+
+            <ListItem
+              onClick={handleClearSearchHistory}
+              sx={{
+                py: 2,
+                px: 3,
+                cursor: 'pointer',
+                '&:hover': {
+                  bgcolor: 'action.hover'
+                }
+              }}
+            >
+              <Box 
+                sx={{ 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  gap: 2,
+                  flex: 1
+                }}
+              >
+                <DeleteSweepIcon sx={{ color: 'primary.main' }} />
+                <ListItemText
+                  primary={
+                    <Typography 
+                      variant="body1" 
+                      sx={{ 
+                        fontWeight: 600,
+                        color: 'text.primary'
+                      }}
+                    >
+                      Clear Search History
+                    </Typography>
+                  }
+                  secondary={
+                    <Typography 
+                      variant="body2" 
+                      sx={{ color: 'text.secondary' }}
+                    >
+                      Remove all recent searches
+                    </Typography>
+                  }
+                />
+              </Box>
+            </ListItem>
+            
+            <Divider />
             
             <ListItem
               sx={{
@@ -237,6 +305,21 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
           </Typography>
         </Box>
       </Container>
+
+      <Snackbar
+        open={snackbarOpen}
+        autoHideDuration={3000}
+        onClose={() => setSnackbarOpen(false)}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        <Alert 
+          onClose={() => setSnackbarOpen(false)} 
+          severity="success"
+          sx={{ width: '100%' }}
+        >
+          {snackbarMessage}
+        </Alert>
+      </Snackbar>
     </Box>
   );
 };

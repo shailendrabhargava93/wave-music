@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { ThemeProvider, CssBaseline, Box, Typography, Container } from '@mui/material';
+import { ThemeProvider, CssBaseline, Box, Container } from '@mui/material';
 import { darkTheme, lightTheme } from './theme';
 import BottomNav from './components/BottomNav';
 import MusicPlayer from './components/MusicPlayer';
@@ -8,6 +8,7 @@ import HomePage from './pages/HomePage';
 import SettingsPage from './pages/SettingsPage';
 import WelcomeScreen from './pages/WelcomeScreen';
 import PlaylistPage from './pages/PlaylistPage';
+import FavouritesPage from './pages/FavouritesPage';
 import { Song, CurrentSong } from './types/api';
 import { saavnApi } from './services/saavnApi';
 import { soundChartsApi, SoundChartsItem } from './services/soundChartsApi';
@@ -69,7 +70,6 @@ function App() {
 
       try {
         setChartSongsLoading(true);
-        console.log('🎵 Loading top 100 songs from SoundCharts (one-time fetch)...');
         
         const response = await soundChartsApi.getTopSongs(0, 100);
         
@@ -81,7 +81,6 @@ function App() {
           
           setChartSongs(songsWithPlaceholder);
           setChartSongsLoaded(true);
-          console.log(`✅ Loaded ${response.items.length} songs from SoundCharts`);
 
           // Search Saavn for each song in background
           for (let i = 0; i < response.items.length; i++) {
@@ -98,10 +97,9 @@ function App() {
 
             await new Promise(resolve => setTimeout(resolve, 200));
           }
-          console.log('✅ Finished searching all songs on Saavn');
         }
       } catch (err) {
-        console.error('❌ Error loading chart songs:', err);
+        // Error loading chart songs
       } finally {
         setChartSongsLoading(false);
       }
@@ -147,7 +145,6 @@ function App() {
       }
       
       // Fallback: Search by song name only and match artist
-      console.log(`🔍 Fallback search for: ${item.song.name}`);
       const fallbackQuery = item.song.name;
       searchResults = await saavnApi.searchSongs(fallbackQuery, 10);
       
@@ -168,8 +165,6 @@ function App() {
           
           // Check if artist name matches
           if (resultArtist.includes(targetArtist) || targetArtist.includes(resultArtist)) {
-            console.log(`✅ Found match via fallback: ${result.name} by ${primaryArtistsNames}`);
-            
             return {
               id: result.id,
               name: result.name,
@@ -199,7 +194,6 @@ function App() {
         }
         
         // If no artist match found, return the first result as a best guess
-        console.log(`⚠️ No artist match, using first result for: ${item.song.name}`);
         const firstResult = searchResults.data.results[0];
         return {
           id: firstResult.id,
@@ -230,7 +224,6 @@ function App() {
       
       return undefined;
     } catch (err) {
-      console.error(`Error searching song ${item.song.name} on Saavn:`, err);
       return undefined;
     }
   };
@@ -243,20 +236,15 @@ function App() {
   };
 
   const handleSongSelect = async (song: Song) => {
-    console.log('Selected song:', song);
-    
     try {
       // Fetch complete song details with download URLs
       const songDetailsResponse = await saavnApi.getSongsByIds([song.id]);
-      console.log('Song details response:', songDetailsResponse);
       
       if (!songDetailsResponse.success || !songDetailsResponse.data || songDetailsResponse.data.length === 0) {
-        console.error('Failed to fetch song details');
         return;
       }
       
       const songDetails = songDetailsResponse.data[0];
-      console.log('Song details:', songDetails);
       
       const getHighQualityImage = (images: Array<{ quality: string; url?: string; link?: string }>) => {
         if (!images || images.length === 0) return '';
@@ -293,13 +281,8 @@ function App() {
       const imageUrl = getHighQualityImage(songDetails.image);
       const audioUrl = getHighQualityAudio(songDetails.downloadUrl);
       const artistNames = getArtistNames(songDetails.artists);
-      
-      console.log('Album art URL:', imageUrl);
-      console.log('Audio URL:', audioUrl);
-      console.log('Artist names:', artistNames);
 
       if (!audioUrl) {
-        console.error('No audio URL found for this song');
         return;
       }
 
@@ -317,12 +300,11 @@ function App() {
         language: songDetails.language || 'Unknown Language',
       };
 
-      console.log('Current song object:', newSong);
       setCurrentSong(newSong);
       setIsPlaying(true);
-      setFullPlayerOpen(true);
+      // Don't automatically open full player, just start playing
     } catch (error) {
-      console.error('Error loading song:', error);
+      // Error loading song
     }
   };
 
@@ -370,11 +352,52 @@ function App() {
 
   const handleBackFromPlaylist = () => {
     setSelectedPlaylist(null);
+    setActiveTab('search'); // Return to search tab
+  };
+
+  const handleFavouriteSongSelect = async (songId: string) => {
+    // Load the song by ID from Saavn
+    try {
+      const songDetailsResponse = await saavnApi.getSongsByIds([songId]);
+      
+      if (!songDetailsResponse.success || !songDetailsResponse.data || songDetailsResponse.data.length === 0) {
+        return;
+      }
+      
+      const songDetails = songDetailsResponse.data[0];
+      
+      // Convert to Song object and call handleSongSelect
+      const song: Song = {
+        id: songDetails.id,
+        name: songDetails.name,
+        album: songDetails.album,
+        year: songDetails.year || '',
+        releaseDate: songDetails.releaseDate || '',
+        duration: songDetails.duration || 0,
+        label: songDetails.label || '',
+        primaryArtists: songDetails.artists?.primary?.map((a: any) => a.name).join(', ') || '',
+        primaryArtistsId: songDetails.artists?.primary?.map((a: any) => a.id).join(',') || '',
+        featuredArtists: songDetails.artists?.featured?.map((a: any) => a.name).join(', ') || '',
+        featuredArtistsId: songDetails.artists?.featured?.map((a: any) => a.id).join(',') || '',
+        explicitContent: songDetails.explicitContent || 0,
+        playCount: songDetails.playCount || 0,
+        language: songDetails.language || '',
+        hasLyrics: songDetails.hasLyrics || false,
+        url: songDetails.url || '',
+        copyright: songDetails.copyright || '',
+        image: songDetails.image || [],
+        downloadUrl: songDetails.downloadUrl || [],
+      };
+      
+      handleSongSelect(song);
+    } catch (error) {
+      // Error loading favourite song
+    }
   };
 
   const renderContent = () => {
-    // Show playlist page if a playlist is selected
-    if (selectedPlaylist) {
+    // Show playlist page if a playlist is selected (only if on search tab)
+    if (selectedPlaylist && activeTab === 'search') {
       return (
         <PlaylistPage
           playlistId={selectedPlaylist.id}
@@ -411,19 +434,9 @@ function App() {
         );
       case 'favourites':
         return (
-          <Box 
-            sx={{ 
-              pb: 16, 
-              display: 'flex', 
-              alignItems: 'center', 
-              justifyContent: 'center', 
-              minHeight: '60vh' 
-            }}
-          >
-            <Typography variant="h6" sx={{ color: 'text.secondary' }}>
-              Favourites Page - Coming Soon
-            </Typography>
-          </Box>
+          <FavouritesPage 
+            onSongSelect={handleFavouriteSongSelect}
+          />
         );
       default:
         return null;
@@ -466,6 +479,7 @@ function App() {
               <FullPlayer 
                 open={fullPlayerOpen} 
                 onClose={() => setFullPlayerOpen(false)}
+                songId={currentSong.id}
                 songTitle={currentSong.title}
                 artist={currentSong.artist}
                 albumArt={currentSong.albumArt}

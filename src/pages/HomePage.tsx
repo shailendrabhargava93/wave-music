@@ -24,24 +24,30 @@ const HomePage: React.FC<HomePageProps> = ({ onSongSelect, chartSongs, chartSong
   useEffect(() => {
     if (chartSongs.length > 0) {
       setDisplayedSongs(chartSongs.slice(0, displayCount));
-      console.log(`📊 Displaying ${displayCount} songs out of ${chartSongs.length}`);
     }
   }, [chartSongs, displayCount]);
 
   // Intersection Observer for infinite scroll
   useEffect(() => {
-    if (displayCount >= chartSongs.length) return; // Don't observe if all songs are displayed
+    if (displayCount >= chartSongs.length) {
+      return; // Don't observe if all songs are displayed
+    }
 
     const observer = new IntersectionObserver(
       entries => {
-        const entry = entries[0];
-        if (entry.isIntersecting) {
-          const newCount = Math.min(displayCount + 10, chartSongs.length);
-          console.log(`📜 Loading more songs - from ${displayCount} to ${newCount}`);
-          setDisplayCount(newCount);
-        }
+        entries.forEach(entry => {
+          if (entry.isIntersecting) {
+            const newCount = Math.min(displayCount + 10, chartSongs.length);
+            if (newCount > displayCount) {
+              setDisplayCount(newCount);
+            }
+          }
+        });
       },
-      { threshold: 0.1, rootMargin: '100px' }
+      { 
+        threshold: 0,
+        rootMargin: '200px'
+      }
     );
 
     const currentTarget = observerTarget.current;
@@ -85,7 +91,7 @@ const HomePage: React.FC<HomePageProps> = ({ onSongSelect, chartSongs, chartSong
       <Header />
       
       <Box sx={{ px: 2, pt: 2 }}>
-        <Typography variant="body1" sx={{ color: 'text.secondary', mb: 3 }}>
+        <Typography variant="h6" sx={{ color: 'text.secondary', mb: 3, fontWeight: 500 }}>
           Trending now • Spotify Charts
         </Typography>
 
@@ -219,7 +225,8 @@ const HomePage: React.FC<HomePageProps> = ({ onSongSelect, chartSongs, chartSong
                 display: 'flex',
                 justifyContent: 'center',
                 py: 3,
-                minHeight: 60,
+                minHeight: 100,
+                width: '100%',
               }}
             >
               {displayCount < chartSongs.length && (

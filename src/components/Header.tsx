@@ -1,43 +1,39 @@
 import React from 'react';
-import { Avatar, Typography, Box } from '@mui/material';
-import PersonIcon from '@mui/icons-material/Person';
+import { Typography, Box } from '@mui/material';
 
 const Header: React.FC = () => {
-  const getGreeting = () => {
-    const hour = new Date().getHours();
-    if (hour < 12) return 'Good morning';
-    if (hour < 18) return 'Good afternoon';
-    return 'Good evening';
-  };
-
   return (
     <Box 
       sx={{ 
         display: 'flex', 
-        alignItems: 'center', 
+        alignItems: 'center',
         mb: 4,
         px: 2
       }}
     >
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-        <Avatar 
-          sx={{ 
-            bgcolor: '#282828',
-            width: 40,
-            height: 40
+        <Box
+          component="img"
+          src="/wave-logo.png"
+          alt="Wave Music"
+          sx={{
+            width: 48,
+            height: 48,
+            objectFit: 'contain',
           }}
-        >
-          <PersonIcon sx={{ color: '#b3b3b3' }} />
-        </Avatar>
+        />
         <Typography 
-          variant="h5" 
+          variant="h6" 
           sx={{ 
-            color: '#fff', 
-            fontWeight: 'bold',
-            fontSize: { xs: '1.5rem', sm: '2rem' }
+            color: 'text.primary',
+            display: 'block',
+            fontSize: { xs: '1.1rem', sm: '1.3rem' },
+            fontWeight: 600,
+            letterSpacing: 0.5,
+            lineHeight: 1.2
           }}
         >
-          {getGreeting()}
+          Wave Music
         </Typography>
       </Box>
     </Box>

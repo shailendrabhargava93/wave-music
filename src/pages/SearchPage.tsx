@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import {
   Box,
   TextField,
@@ -10,11 +10,15 @@ import {
   Avatar,
   InputAdornment,
   CircularProgress,
+  Chip,
+  IconButton,
 } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
 import MusicNoteIcon from '@mui/icons-material/MusicNote';
 import PlaylistPlayIcon from '@mui/icons-material/PlaylistPlay';
 import ClearIcon from '@mui/icons-material/Clear';
+import HistoryIcon from '@mui/icons-material/History';
+import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import { saavnApi } from '../services/saavnApi';
 
 interface SearchPageProps {
@@ -23,17 +27,87 @@ interface SearchPageProps {
 }
 
 const SearchPage: React.FC<SearchPageProps> = ({ onSongSelect, onPlaylistSelect }) => {
-  const [searchQuery, setSearchQuery] = useState('');
-  const [songs, setSongs] = useState<any[]>([]);
-  const [playlists, setPlaylists] = useState<any[]>([]);
+  // Use state that persists in sessionStorage
+  const [searchQuery, setSearchQuery] = useState(() => {
+    return sessionStorage.getItem('searchQuery') || '';
+  });
+  const [songs, setSongs] = useState<any[]>(() => {
+    const saved = sessionStorage.getItem('searchSongs');
+    return saved ? JSON.parse(saved) : [];
+  });
+  const [playlists, setPlaylists] = useState<any[]>(() => {
+    const saved = sessionStorage.getItem('searchPlaylists');
+    return saved ? JSON.parse(saved) : [];
+  });
   const [loading, setLoading] = useState(false);
-  const [hasSearched, setHasSearched] = useState(false);
+  const [hasSearched, setHasSearched] = useState(() => {
+    return sessionStorage.getItem('hasSearched') === 'true';
+  });
+  const [recentSearches, setRecentSearches] = useState<string[]>([]);
+
+  // Save search state to sessionStorage whenever it changes
+  useEffect(() => {
+    sessionStorage.setItem('searchQuery', searchQuery);
+  }, [searchQuery]);
+
+  useEffect(() => {
+    sessionStorage.setItem('searchSongs', JSON.stringify(songs));
+  }, [songs]);
+
+  useEffect(() => {
+    sessionStorage.setItem('searchPlaylists', JSON.stringify(playlists));
+  }, [playlists]);
+
+  useEffect(() => {
+    sessionStorage.setItem('hasSearched', hasSearched ? 'true' : 'false');
+  }, [hasSearched]);
+
+  // Load recent searches from localStorage
+  useEffect(() => {
+    const saved = localStorage.getItem('recentSearches');
+    if (saved) {
+      try {
+        setRecentSearches(JSON.parse(saved));
+      } catch (e) {
+        // Error loading recent searches
+      }
+    }
+  }, []);
+
+  // Save search to recent searches
+  const saveToRecentSearches = (query: string) => {
+    const trimmedQuery = query.trim();
+    if (!trimmedQuery || trimmedQuery.length < 3) return;
+
+    setRecentSearches(prev => {
+      // Remove if already exists
+      const filtered = prev.filter(s => s.toLowerCase() !== trimmedQuery.toLowerCase());
+      // Add to beginning, keep only 10
+      const updated = [trimmedQuery, ...filtered].slice(0, 10);
+      // Save to localStorage
+      localStorage.setItem('recentSearches', JSON.stringify(updated));
+      return updated;
+    });
+  };
+
+  // Clear all recent searches
+  const clearRecentSearches = () => {
+    setRecentSearches([]);
+    localStorage.removeItem('recentSearches');
+  };
 
   // Decode HTML entities in strings
   const decodeHtmlEntities = (text: string): string => {
+    if (!text) return text;
     const textarea = document.createElement('textarea');
     textarea.innerHTML = text;
-    return textarea.value;
+    const decoded = textarea.value;
+    // If still contains entities, try one more time
+    if (decoded.includes('&')) {
+      textarea.innerHTML = decoded;
+      return textarea.value;
+    }
+    return decoded;
   };
 
   const handleSearch = useCallback(async (query: string) => {
@@ -44,6 +118,9 @@ const SearchPage: React.FC<SearchPageProps> = ({ onSongSelect, onPlaylistSelect 
       return;
     }
 
+    // Save to recent searches
+    saveToRecentSearches(query);
+
     setLoading(true);
     try {
       // Call both APIs in parallel
@@ -52,13 +129,8 @@ const SearchPage: React.FC<SearchPageProps> = ({ onSongSelect, onPlaylistSelect 
         saavnApi.searchPlaylists(query, 10)
       ]);
       
-      console.log('=== API RESPONSES ===');
-      console.log('Songs Response:', songsResponse);
-      console.log('Playlists Response:', playlistsResponse);
-      
       // Extract songs from response
       const songsData = songsResponse.data?.results || [];
-      console.log('Songs data:', songsData);
       
       const validSongs = songsData.filter((song: any) => {
         return song && 
@@ -70,7 +142,6 @@ const SearchPage: React.FC<SearchPageProps> = ({ onSongSelect, onPlaylistSelect 
       
       // Extract playlists from response
       const playlistsData = playlistsResponse.data?.results || [];
-      console.log('Playlists data:', playlistsData);
       
       const validPlaylists = playlistsData.filter((playlist: any) => {
         return playlist && 
@@ -80,33 +151,33 @@ const SearchPage: React.FC<SearchPageProps> = ({ onSongSelect, onPlaylistSelect 
                playlist.image.length > 0;
       }).slice(0, 10);
       
-      console.log('=== FINAL RESULTS ===');
-      console.log('Valid Songs:', validSongs);
-      console.log('Valid Playlists:', validPlaylists);
-      
       setSongs(validSongs);
       setPlaylists(validPlaylists);
       setHasSearched(true);
     } catch (error) {
-      console.error('Search error:', error);
       setSongs([]);
       setPlaylists([]);
       setHasSearched(true);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [saveToRecentSearches]);
+
+  // Handle clicking on a recent search
+  const handleRecentSearchClick = (query: string) => {
+    setSearchQuery(query);
+    handleSearch(query);
+  };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
     setSearchQuery(value);
-    
-    // Debounce search
-    const timeoutId = setTimeout(() => {
-      handleSearch(value);
-    }, 500);
+  };
 
-    return () => clearTimeout(timeoutId);
+  const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      handleSearch(searchQuery);
+    }
   };
 
   const handleClearSearch = () => {
@@ -150,7 +221,8 @@ const SearchPage: React.FC<SearchPageProps> = ({ onSongSelect, onPlaylistSelect 
         fullWidth
         value={searchQuery}
         onChange={handleInputChange}
-        placeholder="Search songs, playlists..."
+        onKeyPress={handleKeyPress}
+        placeholder="Search songs, playlists... (Press Enter to search)"
         variant="outlined"
         autoFocus
         InputProps={{
@@ -181,10 +253,16 @@ const SearchPage: React.FC<SearchPageProps> = ({ onSongSelect, onPlaylistSelect 
             bgcolor: 'background.paper',
             borderRadius: 2,
             '& fieldset': {
-              borderColor: 'transparent',
+              borderColor: (theme) => 
+                theme.palette.mode === 'light' 
+                  ? 'rgba(0, 0, 0, 0.23)' 
+                  : 'transparent',
             },
             '&:hover fieldset': {
-              borderColor: 'action.hover',
+              borderColor: (theme) => 
+                theme.palette.mode === 'light' 
+                  ? 'rgba(0, 0, 0, 0.5)' 
+                  : 'action.hover',
             },
             '&.Mui-focused fieldset': {
               borderColor: 'primary.main',
@@ -198,6 +276,49 @@ const SearchPage: React.FC<SearchPageProps> = ({ onSongSelect, onPlaylistSelect 
           },
         }}
       />
+
+      {/* Recent Searches */}
+      {!hasSearched && !loading && recentSearches.length > 0 && (
+        <Box sx={{ mb: 4 }}>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <HistoryIcon sx={{ color: 'text.secondary', fontSize: 20 }} />
+              <Typography variant="subtitle2" sx={{ color: 'text.secondary', fontWeight: 600 }}>
+                Recent Searches
+              </Typography>
+            </Box>
+            <IconButton
+              size="small"
+              onClick={clearRecentSearches}
+              sx={{
+                color: 'text.secondary',
+                '&:hover': {
+                  color: 'error.main',
+                },
+              }}
+            >
+              <DeleteOutlineIcon fontSize="small" />
+            </IconButton>
+          </Box>
+          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+            {recentSearches.map((search, index) => (
+              <Chip
+                key={index}
+                label={search}
+                onClick={() => handleRecentSearchClick(search)}
+                sx={{
+                  bgcolor: 'action.hover',
+                  color: 'text.primary',
+                  '&:hover': {
+                    bgcolor: 'action.selected',
+                  },
+                  cursor: 'pointer',
+                }}
+              />
+            ))}
+          </Box>
+        </Box>
+      )}
 
       {/* Loading State */}
       {loading && (
@@ -306,7 +427,7 @@ const SearchPage: React.FC<SearchPageProps> = ({ onSongSelect, onPlaylistSelect 
             {playlists.map((playlist) => (
               <React.Fragment key={playlist.id}>
                 <ListItem
-                  onClick={() => onPlaylistSelect(playlist.id, playlist.name, getHighQualityImage(playlist.image))}
+                  onClick={() => onPlaylistSelect(playlist.id, decodeHtmlEntities(playlist.name), getHighQualityImage(playlist.image))}
                   sx={{
                     cursor: 'pointer',
                     borderRadius: 1,

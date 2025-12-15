@@ -12,7 +12,8 @@ import {
   Divider,
   List,
   ListItem,
-  ListItemText
+  ListItemText,
+  Snackbar
 } from '@mui/material';
 import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
 import FavoriteIcon from '@mui/icons-material/Favorite';
@@ -27,6 +28,7 @@ import CloseIcon from '@mui/icons-material/Close';
 interface FullPlayerProps {
   open: boolean;
   onClose: () => void;
+  songId?: string;
   songTitle?: string;
   artist?: string;
   albumArt?: string;
@@ -47,6 +49,7 @@ interface FullPlayerProps {
 const FullPlayer: React.FC<FullPlayerProps> = ({ 
   open, 
   onClose,
+  songId,
   songTitle = 'Freefall (feat. Oliver Tree)', 
   artist = 'Whethan',
   albumArt,
@@ -66,6 +69,8 @@ const FullPlayer: React.FC<FullPlayerProps> = ({
   const [progress, setProgress] = useState(0);
   const [audio] = useState(() => new Audio());
   const [infoDialogOpen, setInfoDialogOpen] = useState(false);
+  const [snackbarOpen, setSnackbarOpen] = useState(false);
+  const [snackbarMessage, setSnackbarMessage] = useState('');
   const totalDuration = duration;
 
   // Decode HTML entities in strings
@@ -75,6 +80,55 @@ const FullPlayer: React.FC<FullPlayerProps> = ({
     return textarea.value;
   };
 
+  // Check if current song is in favourites
+  useEffect(() => {
+    if (!songId) return;
+    
+    const saved = localStorage.getItem('favouriteSongs');
+    if (saved) {
+      try {
+        const favourites = JSON.parse(saved);
+        const isFav = favourites.some((song: any) => song.id === songId);
+        setIsFavorite(isFav);
+      } catch (e) {
+        // Error checking favourites
+      }
+    }
+  }, [songId, songTitle]);
+
+  // Toggle favourite status
+  const toggleFavorite = () => {
+    if (!songId) return;
+
+    const saved = localStorage.getItem('favouriteSongs');
+    let favourites = saved ? JSON.parse(saved) : [];
+
+    const existingIndex = favourites.findIndex((song: any) => song.id === songId);
+
+    if (existingIndex >= 0) {
+      // Remove from favourites
+      favourites.splice(existingIndex, 1);
+      setIsFavorite(false);
+      setSnackbarMessage('Removed from favourites');
+      setSnackbarOpen(true);
+    } else {
+      // Add to favourites
+      const newFavourite = {
+        id: songId,
+        name: songTitle,
+        artist: artist,
+        albumArt: albumArt || '',
+        addedAt: Date.now(),
+      };
+      favourites.unshift(newFavourite); // Add to beginning
+      setIsFavorite(true);
+      setSnackbarMessage('Added to favourites ❤️');
+      setSnackbarOpen(true);
+    }
+
+    localStorage.setItem('favouriteSongs', JSON.stringify(favourites));
+  };
+
   // Reset progress and load new song when it changes
   useEffect(() => {
     setProgress(0);
@@ -82,7 +136,6 @@ const FullPlayer: React.FC<FullPlayerProps> = ({
     if (audioUrl) {
       audio.src = audioUrl;
       audio.load();
-      console.log('Audio loaded:', audioUrl);
     }
   }, [songTitle, duration, audioUrl, audio]);
 
@@ -92,7 +145,6 @@ const FullPlayer: React.FC<FullPlayerProps> = ({
 
     if (isPlaying) {
       audio.play().catch(error => {
-        console.error('Error playing audio:', error);
         if (onTogglePlay) {
           onTogglePlay();
         }
@@ -150,10 +202,6 @@ const FullPlayer: React.FC<FullPlayerProps> = ({
     if (onTogglePlay) {
       onTogglePlay();
     }
-  };
-
-  const toggleFavorite = () => {
-    setIsFavorite(!isFavorite);
   };
 
   return (
@@ -511,6 +559,31 @@ const FullPlayer: React.FC<FullPlayerProps> = ({
           </List>
         </DialogContent>
       </Dialog>
+
+      <Snackbar
+        open={snackbarOpen}
+        autoHideDuration={2000}
+        onClose={() => setSnackbarOpen(false)}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        <Box
+          sx={{
+            bgcolor: 'primary.main',
+            color: '#fff',
+            px: 3,
+            py: 1.5,
+            borderRadius: 2,
+            boxShadow: 3,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 1,
+          }}
+        >
+          <Typography variant="body2" sx={{ fontWeight: 500 }}>
+            {snackbarMessage}
+          </Typography>
+        </Box>
+      </Snackbar>
     </Drawer>
   );
 };
