@@ -265,22 +265,6 @@ const PlaylistPage: React.FC<PlaylistPageProps> = ({
                   },
                 }}
               >
-                <Box
-                  sx={{
-                    minWidth: 40,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    mr: 2,
-                  }}
-                >
-                  <Typography
-                    variant="body2"
-                    sx={{ color: 'text.secondary', fontWeight: 600 }}
-                  >
-                    {index + 1}
-                  </Typography>
-                </Box>
                 <ListItemAvatar sx={{ minWidth: 72 }}>
                   <Avatar
                     src={getHighQualityImage(song.image)}
@@ -301,7 +285,7 @@ const PlaylistPage: React.FC<PlaylistPageProps> = ({
                         whiteSpace: 'nowrap',
                       }}
                     >
-                      {song.name}
+                      {decodeHtmlEntities(song.name)}
                     </Typography>
                   }
                   secondary={
@@ -315,7 +299,7 @@ const PlaylistPage: React.FC<PlaylistPageProps> = ({
                           whiteSpace: 'nowrap',
                         }}
                       >
-                        {getArtistNames(song)}
+                        {decodeHtmlEntities(getArtistNames(song))}
                       </Typography>
                       {song.duration && (
                         <Typography variant="caption" sx={{ color: 'text.disabled' }}>

@@ -144,7 +144,7 @@ const FullPlayer: React.FC<FullPlayerProps> = ({
     if (!audioUrl) return;
 
     if (isPlaying) {
-      audio.play().catch(error => {
+      audio.play().catch(() => {
         if (onTogglePlay) {
           onTogglePlay();
         }

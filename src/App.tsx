@@ -4,6 +4,7 @@ import { darkTheme, lightTheme } from './theme';
 import BottomNav from './components/BottomNav';
 import MusicPlayer from './components/MusicPlayer';
 import FullPlayer from './components/FullPlayer';
+import InstallPrompt from './components/InstallPrompt';
 import HomePage from './pages/HomePage';
 import SettingsPage from './pages/SettingsPage';
 import WelcomeScreen from './pages/WelcomeScreen';
@@ -499,6 +500,7 @@ function App() {
             </>
           )}
           <BottomNav activeTab={activeTab} onTabChange={setActiveTab} />
+          <InstallPrompt />
         </Box>
       )}
     </ThemeProvider>
