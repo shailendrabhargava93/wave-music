@@ -150,8 +150,9 @@ const UpNextDrawer: React.FC<UpNextDrawerProps> = ({
                       }}
                     >
                       {(() => {
-                        if (song.artists?.primary && Array.isArray(song.artists.primary)) {
-                          return song.artists.primary.map((artist: any) => artist.name).join(', ');
+                        const songAny = song as any;
+                        if (songAny.artists?.primary && Array.isArray(songAny.artists.primary)) {
+                          return songAny.artists.primary.map((artist: any) => artist.name).join(', ');
                         }
                         return song.primaryArtists || 'Unknown Artist';
                       })()}

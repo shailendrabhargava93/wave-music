@@ -48,7 +48,7 @@ const WelcomeScreen = ({ onGetStarted }: WelcomeScreenProps) => {
         {/* Logo */}
         <Box
           component="img"
-          src="/wave-logo.png"
+          src="/wave-logo.svg"
           alt="Wave Music"
           sx={{
             width: { xs: 120, sm: 140 },

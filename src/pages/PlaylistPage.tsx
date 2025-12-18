@@ -10,10 +10,18 @@ import {
   ListItemAvatar,
   ListItemText,
   Button,
+  Menu,
+  MenuItem,
+  ListItemIcon,
 } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import MusicNoteIcon from '@mui/icons-material/MusicNote';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
+import FavoriteBorderIcon from '@mui/icons-material/FavoriteBorder';
+import FavoriteIcon from '@mui/icons-material/Favorite';
+import MoreVertIcon from '@mui/icons-material/MoreVert';
+import QueueMusicIcon from '@mui/icons-material/QueueMusic';
+import PlaylistAddIcon from '@mui/icons-material/PlaylistAdd';
 import { saavnApi } from '../services/saavnApi';
 
 interface PlaylistPageProps {
@@ -23,6 +31,9 @@ interface PlaylistPageProps {
   onBack: () => void;
   onSongSelect: (song: any) => void;
   type?: 'playlist' | 'album';
+  onAddToQueue?: (song: any) => void;
+  onPlayNext?: (song: any) => void;
+  onShowSnackbar?: (message: string) => void;
 }
 
 const PlaylistPage: React.FC<PlaylistPageProps> = ({
@@ -32,10 +43,119 @@ const PlaylistPage: React.FC<PlaylistPageProps> = ({
   onBack,
   onSongSelect,
   type = 'playlist',
+  onAddToQueue,
+  onPlayNext,
+  onShowSnackbar,
 }) => {
   const [songs, setSongs] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
+  const [isFavourite, setIsFavourite] = useState(false);
+  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+  const [selectedSong, setSelectedSong] = useState<any>(null);
+
+  // Check if playlist/album is in favourites
+  useEffect(() => {
+    const storageKey = type === 'album' ? 'favouriteAlbums' : 'favouritePlaylists';
+    const saved = localStorage.getItem(storageKey);
+    if (saved) {
+      try {
+        const favourites = JSON.parse(saved);
+        const exists = favourites.some((item: any) => item.id === playlistId);
+        setIsFavourite(exists);
+      } catch (e) {
+        // Error checking favourites
+      }
+    }
+  }, [playlistId, type]);
+
+  const toggleFavourite = () => {
+    const storageKey = type === 'album' ? 'favouriteAlbums' : 'favouritePlaylists';
+    const saved = localStorage.getItem(storageKey);
+    let favourites = [];
+    
+    try {
+      favourites = saved ? JSON.parse(saved) : [];
+    } catch (e) {
+      favourites = [];
+    }
+
+    if (isFavourite) {
+      // Remove from favourites
+      favourites = favourites.filter((item: any) => item.id !== playlistId);
+      setIsFavourite(false);
+    } else {
+      // Add to favourites
+      const newFavourite = {
+        id: playlistId,
+        name: playlistName,
+        image: playlistImage,
+        artist: type === 'album' ? 'Various Artists' : '',
+        description: type === 'playlist' ? playlistName : '',
+        addedAt: Date.now(),
+      };
+      favourites.push(newFavourite);
+      setIsFavourite(true);
+    }
+
+    localStorage.setItem(storageKey, JSON.stringify(favourites));
+  };
+
+  const handleMenuOpen = (event: React.MouseEvent<HTMLElement>, song: any) => {
+    event.stopPropagation();
+    setAnchorEl(event.currentTarget);
+    setSelectedSong(song);
+  };
+
+  const handleMenuClose = () => {
+    setAnchorEl(null);
+    setSelectedSong(null);
+  };
+
+  const handleAddToQueue = () => {
+    if (selectedSong && onAddToQueue) {
+      onAddToQueue(selectedSong);
+    }
+    handleMenuClose();
+  };
+
+  const handlePlayNext = () => {
+    if (selectedSong && onPlayNext) {
+      onPlayNext(selectedSong);
+    }
+    handleMenuClose();
+  };
+
+  const handleAddToFavourites = () => {
+    if (selectedSong) {
+      const saved = localStorage.getItem('favouriteSongs');
+      let favourites = [];
+      
+      try {
+        favourites = saved ? JSON.parse(saved) : [];
+      } catch (e) {
+        favourites = [];
+      }
+
+      const exists = favourites.some((song: any) => song.id === selectedSong.id);
+      
+      if (!exists) {
+        const newFavourite = {
+          id: selectedSong.id,
+          name: selectedSong.name,
+          artist: getArtistNames(selectedSong),
+          albumArt: getHighQualityImage(selectedSong.image),
+          addedAt: Date.now(),
+        };
+        favourites.push(newFavourite);
+        localStorage.setItem('favouriteSongs', JSON.stringify(favourites));
+        if (onShowSnackbar) {
+          onShowSnackbar('Added to favourites');
+        }
+      }
+    }
+    handleMenuClose();
+  };
 
   // Decode HTML entities in strings
   const decodeHtmlEntities = (text: string): string => {
@@ -141,9 +261,9 @@ const PlaylistPage: React.FC<PlaylistPageProps> = ({
           display: 'flex',
           flexDirection: 'column',
           alignItems: 'center',
-          px: 3,
-          pb: 2,
-          mb: 2,
+          px: 2,
+          pb: 1,
+          mb: 1.5,
           background: (theme) =>
             theme.palette.mode === 'dark'
               ? 'linear-gradient(180deg, rgba(0, 188, 212, 0.1) 0%, transparent 100%)'
@@ -157,7 +277,7 @@ const PlaylistPage: React.FC<PlaylistPageProps> = ({
             width: 160,
             height: 160,
             mb: 2,
-            boxShadow: '0 8px 24px rgba(0, 0, 0, 0.3)',
+            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.2)',
           }}
         >
           <PlayArrowIcon sx={{ fontSize: 80 }} />
@@ -171,39 +291,50 @@ const PlaylistPage: React.FC<PlaylistPageProps> = ({
             mb: 1,
             fontSize: '1.25rem',
             px: 2,
+            lineHeight: 1.2,
           }}
         >
           {decodeHtmlEntities(playlistName)}
         </Typography>
-        <Typography variant="body2" sx={{ color: 'text.secondary', mb: 2 }}>
+        <Typography variant="body2" sx={{ color: 'text.secondary', mb: 2, fontSize: '0.9rem' }}>
           {songs.length} songs
         </Typography>
-        {songs.length > 0 && (
-          <Button
-            variant="contained"
-            startIcon={<PlayArrowIcon />}
-            onClick={() => {
-              if (songs.length > 0) {
-                onSongSelect(songs[0]);
-              }
-            }}
+        <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'center' }}>
+          {songs.length > 0 && (
+            <IconButton
+              onClick={() => {
+                if (songs.length > 0) {
+                  onSongSelect(songs[0]);
+                }
+              }}
+              sx={{
+                bgcolor: 'primary.main',
+                color: 'white',
+                width: 56,
+                height: 56,
+                '&:hover': {
+                  bgcolor: 'primary.dark',
+                },
+              }}
+            >
+              <PlayArrowIcon sx={{ fontSize: 32 }} />
+            </IconButton>
+          )}
+          <IconButton
+            onClick={toggleFavourite}
             sx={{
-              bgcolor: 'primary.main',
-              color: 'white',
-              px: 4,
-              py: 1.5,
-              borderRadius: '50px',
-              textTransform: 'none',
-              fontWeight: 600,
-              fontSize: '1rem',
+              bgcolor: isFavourite ? 'rgba(255, 82, 82, 0.1)' : 'action.hover',
+              color: isFavourite ? 'error.main' : 'text.secondary',
+              width: 40,
+              height: 40,
               '&:hover': {
-                bgcolor: 'primary.dark',
+                bgcolor: isFavourite ? 'rgba(255, 82, 82, 0.2)' : 'action.selected',
               },
             }}
           >
-            Play All
-          </Button>
-        )}
+            {isFavourite ? <FavoriteIcon fontSize="small" /> : <FavoriteBorderIcon fontSize="small" />}
+          </IconButton>
+        </Box>
       </Box>
 
       {/* Loading State */}
@@ -254,7 +385,6 @@ const PlaylistPage: React.FC<PlaylistPageProps> = ({
             {songs.map((song, index) => (
               <ListItem
                 key={song.id || index}
-                onClick={() => onSongSelect(song)}
                 sx={{
                   cursor: 'pointer',
                   borderRadius: 1,
@@ -268,8 +398,20 @@ const PlaylistPage: React.FC<PlaylistPageProps> = ({
                         : 'rgba(255, 255, 255, 0.05)',
                   },
                 }}
+                secondaryAction={
+                  <IconButton
+                    edge="end"
+                    onClick={(e) => handleMenuOpen(e, song)}
+                    sx={{ color: 'text.secondary' }}
+                  >
+                    <MoreVertIcon />
+                  </IconButton>
+                }
               >
-                <ListItemAvatar sx={{ minWidth: 72 }}>
+                <ListItemAvatar 
+                  sx={{ minWidth: 72, cursor: 'pointer' }}
+                  onClick={() => onSongSelect(song)}
+                >
                   <Avatar
                     src={getHighQualityImage(song.image)}
                     variant="rounded"
@@ -279,6 +421,8 @@ const PlaylistPage: React.FC<PlaylistPageProps> = ({
                   </Avatar>
                 </ListItemAvatar>
                 <ListItemText
+                  onClick={() => onSongSelect(song)}
+                  sx={{ cursor: 'pointer', mr: 1, pr: 1 }}
                   primary={
                     <Typography
                       sx={{
@@ -287,13 +431,14 @@ const PlaylistPage: React.FC<PlaylistPageProps> = ({
                         overflow: 'hidden',
                         textOverflow: 'ellipsis',
                         whiteSpace: 'nowrap',
+                        pr: 1,
                       }}
                     >
                       {decodeHtmlEntities(song.name)}
                     </Typography>
                   }
                   secondary={
-                    <Box>
+                    <Box sx={{ pr: 1 }}>
                       <Typography
                         variant="body2"
                         sx={{
@@ -317,6 +462,46 @@ const PlaylistPage: React.FC<PlaylistPageProps> = ({
               </ListItem>
             ))}
           </List>
+
+          {/* Context Menu */}
+          <Menu
+            anchorEl={anchorEl}
+            open={Boolean(anchorEl)}
+            onClose={handleMenuClose}
+            anchorOrigin={{
+              vertical: 'bottom',
+              horizontal: 'right',
+            }}
+            transformOrigin={{
+              vertical: 'top',
+              horizontal: 'right',
+            }}
+          >
+            <MenuItem onClick={handlePlayNext}>
+              <ListItemIcon>
+                <PlayArrowIcon fontSize="small" />
+              </ListItemIcon>
+              <Typography variant="body2">Play Now</Typography>
+            </MenuItem>
+            <MenuItem onClick={handlePlayNext}>
+              <ListItemIcon>
+                <QueueMusicIcon fontSize="small" />
+              </ListItemIcon>
+              <Typography variant="body2">Play Next</Typography>
+            </MenuItem>
+            <MenuItem onClick={handleAddToQueue}>
+              <ListItemIcon>
+                <PlaylistAddIcon fontSize="small" />
+              </ListItemIcon>
+              <Typography variant="body2">Add to Queue</Typography>
+            </MenuItem>
+            <MenuItem onClick={handleAddToFavourites}>
+              <ListItemIcon>
+                <FavoriteIcon fontSize="small" />
+              </ListItemIcon>
+              <Typography variant="body2">Add to Favourites</Typography>
+            </MenuItem>
+          </Menu>
         </Box>
       )}
 

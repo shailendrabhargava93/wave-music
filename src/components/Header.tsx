@@ -1,12 +1,20 @@
 import React from 'react';
-import { Typography, Box } from '@mui/material';
+import { Typography, Box, IconButton } from '@mui/material';
+import HistoryIcon from '@mui/icons-material/History';
+import SettingsIcon from '@mui/icons-material/Settings';
 
-const Header: React.FC = () => {
+interface HeaderProps {
+  onRecentlyPlayedClick?: () => void;
+  onSettingsClick?: () => void;
+}
+
+const Header: React.FC<HeaderProps> = ({ onRecentlyPlayedClick, onSettingsClick }) => {
   return (
     <Box 
       sx={{ 
         display: 'flex', 
         alignItems: 'center',
+        justifyContent: 'space-between',
         mb: 4,
         px: 2
       }}
@@ -14,7 +22,7 @@ const Header: React.FC = () => {
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
         <Box
           component="img"
-          src="/wave-logo.png"
+          src="/wave-logo.svg"
           alt="Wave Music"
           sx={{
             width: 48,
@@ -35,6 +43,19 @@ const Header: React.FC = () => {
         >
           Wave Music
         </Typography>
+      </Box>
+      
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+        {onRecentlyPlayedClick && (
+          <IconButton onClick={onRecentlyPlayedClick} sx={{ color: 'text.primary' }}>
+            <HistoryIcon />
+          </IconButton>
+        )}
+        {onSettingsClick && (
+          <IconButton onClick={onSettingsClick} sx={{ color: 'text.primary' }}>
+            <SettingsIcon />
+          </IconButton>
+        )}
       </Box>
     </Box>
   );

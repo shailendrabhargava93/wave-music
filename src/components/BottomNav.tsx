@@ -3,7 +3,7 @@ import { BottomNavigation, BottomNavigationAction, Paper } from '@mui/material';
 import HomeIcon from '@mui/icons-material/Home';
 import SearchIcon from '@mui/icons-material/Search';
 import FavoriteIcon from '@mui/icons-material/Favorite';
-import SettingsIcon from '@mui/icons-material/Settings';
+import ExploreIcon from '@mui/icons-material/Explore';
 
 interface BottomNavProps {
   activeTab: string;
@@ -14,15 +14,15 @@ const BottomNav: React.FC<BottomNavProps> = ({ activeTab, onTabChange }) => {
   const getTabIndex = (tab: string) => {
     switch (tab) {
       case 'home': return 0;
-      case 'search': return 1;
-      case 'favourites': return 2;
-      case 'settings': return 3;
+      case 'explore': return 1;
+      case 'search': return 2;
+      case 'favourites': return 3;
       default: return 0;
     }
   };
 
   const handleChange = (_event: React.SyntheticEvent, newValue: number) => {
-    const tabs = ['home', 'search', 'favourites', 'settings'];
+    const tabs = ['home', 'explore', 'search', 'favourites'];
     onTabChange(tabs[newValue]);
   };
 
@@ -57,16 +57,16 @@ const BottomNav: React.FC<BottomNavProps> = ({ activeTab, onTabChange }) => {
           icon={<HomeIcon />} 
         />
         <BottomNavigationAction 
+          label="Explore" 
+          icon={<ExploreIcon />} 
+        />
+        <BottomNavigationAction 
           label="Search" 
           icon={<SearchIcon />} 
         />
         <BottomNavigationAction 
           label="Library" 
           icon={<FavoriteIcon />} 
-        />
-        <BottomNavigationAction 
-          label="Settings" 
-          icon={<SettingsIcon />} 
         />
       </BottomNavigation>
     </Paper>

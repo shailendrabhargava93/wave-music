@@ -12,6 +12,8 @@ import {
   CircularProgress,
   Chip,
   IconButton,
+  Menu,
+  MenuItem,
 } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
 import MusicNoteIcon from '@mui/icons-material/MusicNote';
@@ -19,10 +21,15 @@ import PlaylistPlayIcon from '@mui/icons-material/PlaylistPlay';
 import ClearIcon from '@mui/icons-material/Clear';
 import HistoryIcon from '@mui/icons-material/History';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
+import MoreVertIcon from '@mui/icons-material/MoreVert';
+import QueueMusicIcon from '@mui/icons-material/QueueMusic';
+import PlaylistAddIcon from '@mui/icons-material/PlaylistAdd';
+import FavoriteIcon from '@mui/icons-material/Favorite';
 import { saavnApi } from '../services/saavnApi';
+import { Song } from '../types/api';
 
 interface SearchPageProps {
-  onSongSelect: (song: any) => void;
+  onSongSelect: (song: Song) => void;
   onPlaylistSelect: (playlistId: string, playlistName: string, playlistImage: string) => void;
 }
 
@@ -222,7 +229,7 @@ const SearchPage: React.FC<SearchPageProps> = ({ onSongSelect, onPlaylistSelect 
         value={searchQuery}
         onChange={handleInputChange}
         onKeyPress={handleKeyPress}
-        placeholder="Search songs, playlists... (Press Enter to search)"
+        placeholder="Search songs, playlists..."
         variant="outlined"
         autoFocus
         InputProps={{

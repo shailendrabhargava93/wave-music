@@ -1,15 +1,17 @@
 import React from 'react';
-import { Box, Avatar, Typography, IconButton, Paper } from '@mui/material';
+import { Box, Avatar, Typography, IconButton, Paper, CircularProgress, LinearProgress } from '@mui/material';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import PauseIcon from '@mui/icons-material/Pause';
 import SkipNextIcon from '@mui/icons-material/SkipNext';
-import SkipPreviousIcon from '@mui/icons-material/SkipPrevious';
 
 interface MusicPlayerProps {
   songTitle?: string;
   artist?: string;
   albumArt?: string;
   isPlaying?: boolean;
+  isLoading?: boolean;
+  progress?: number;
+  duration?: number;
   onTogglePlay?: () => void;
   onOpenFullPlayer?: () => void;
   onNextSong?: () => void;
@@ -21,6 +23,9 @@ const MusicPlayer: React.FC<MusicPlayerProps> = ({
   artist = 'Whethan',
   albumArt,
   isPlaying = false,
+  isLoading = false,
+  progress = 0,
+  duration = 0,
   onTogglePlay,
   onOpenFullPlayer,
   onNextSong,
@@ -31,6 +36,8 @@ const MusicPlayer: React.FC<MusicPlayerProps> = ({
       onTogglePlay();
     }
   };
+
+  const progressPercentage = duration > 0 ? (progress / duration) * 100 : 0;
 
   return (
     <Paper
@@ -45,6 +52,19 @@ const MusicPlayer: React.FC<MusicPlayerProps> = ({
         borderRadius: 0,
       }}
     >
+      {/* Progress bar */}
+      <LinearProgress 
+        variant="determinate" 
+        value={progressPercentage} 
+        sx={{
+          height: 3,
+          bgcolor: 'rgba(0, 0, 0, 0.1)',
+          '& .MuiLinearProgress-bar': {
+            bgcolor: 'primary.main',
+          },
+        }}
+      />
+      
       <Box
         sx={{
           display: 'flex',
@@ -109,42 +129,38 @@ const MusicPlayer: React.FC<MusicPlayerProps> = ({
 
         {/* Right side: Controls */}
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-          <IconButton
-            onClick={onPreviousSong}
-            sx={{
-              color: 'text.primary',
-              '&:hover': {
-                bgcolor: 'action.hover',
-              },
-            }}
-            aria-label="previous track"
-          >
-            <SkipPreviousIcon />
-          </IconButton>
-          <IconButton
-            onClick={togglePlay}
-            sx={{
-              color: 'text.primary',
-              '&:hover': {
-                bgcolor: 'action.hover',
-              },
-            }}
-            aria-label={isPlaying ? 'pause' : 'play'}
-          >
-            {isPlaying ? <PauseIcon /> : <PlayArrowIcon />}
-          </IconButton>
-          <IconButton
-            onClick={onNextSong}
-            sx={{
-              color: 'text.primary',
-              '&:hover': {
-                bgcolor: 'action.hover',
-              },
-            }}
-            aria-label="next track"
-          >
-            <SkipNextIcon />
-          </IconButton>
+          {isLoading ? (
+            <Box sx={{ display: 'flex', alignItems: 'center', px: 2 }}>
+              <CircularProgress size={24} sx={{ color: 'primary.main' }} />
+            </Box>
+          ) : (
+            <>
+              <IconButton
+                onClick={togglePlay}
+                sx={{
+                  color: 'text.primary',
+                  '&:hover': {
+                    bgcolor: 'action.hover',
+                  },
+                }}
+                aria-label={isPlaying ? 'pause' : 'play'}
+              >
+                {isPlaying ? <PauseIcon /> : <PlayArrowIcon />}
+              </IconButton>
+              <IconButton
+                onClick={onNextSong}
+                sx={{
+                  color: 'text.primary',
+                  '&:hover': {
+                    bgcolor: 'action.hover',
+                  },
+                }}
+                aria-label="next track"
+              >
+                <SkipNextIcon />
+              </IconButton>
+            </>
+          )}
         </Box>
       </Box>
     </Paper>

@@ -9,10 +9,19 @@ import {
   Avatar,
   IconButton,
   Container,
+  Tabs,
+  Tab,
+  Menu,
+  MenuItem,
+  ListItemIcon,
 } from '@mui/material';
 import MusicNoteIcon from '@mui/icons-material/MusicNote';
 import FavoriteIcon from '@mui/icons-material/Favorite';
 import DeleteIcon from '@mui/icons-material/Delete';
+import AlbumIcon from '@mui/icons-material/Album';
+import PlaylistPlayIcon from '@mui/icons-material/PlaylistPlay';
+import MoreVertIcon from '@mui/icons-material/MoreVert';
+import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 
 interface FavouriteSong {
   id: string;
@@ -22,16 +31,39 @@ interface FavouriteSong {
   addedAt: number;
 }
 
+interface FavouriteAlbum {
+  id: string;
+  name: string;
+  artist: string;
+  image: string;
+  addedAt: number;
+}
+
+interface FavouritePlaylist {
+  id: string;
+  name: string;
+  description: string;
+  image: string;
+  addedAt: number;
+}
+
 interface FavouritesPageProps {
   onSongSelect: (songId: string) => void;
 }
 
 const FavouritesPage: React.FC<FavouritesPageProps> = ({ onSongSelect }) => {
+  const [activeTab, setActiveTab] = useState(0);
   const [favourites, setFavourites] = useState<FavouriteSong[]>([]);
+  const [favouriteAlbums, setFavouriteAlbums] = useState<FavouriteAlbum[]>([]);
+  const [favouritePlaylists, setFavouritePlaylists] = useState<FavouritePlaylist[]>([]);
+  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+  const [selectedItem, setSelectedItem] = useState<any>(null);
 
   // Load favourites from localStorage
   useEffect(() => {
     loadFavourites();
+    loadFavouriteAlbums();
+    loadFavouritePlaylists();
   }, []);
 
   const loadFavourites = () => {
@@ -39,9 +71,45 @@ const FavouritesPage: React.FC<FavouritesPageProps> = ({ onSongSelect }) => {
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
-        setFavourites(parsed);
+        // Sort by addedAt date (most recent first)
+        const sorted = parsed.sort((a: FavouriteSong, b: FavouriteSong) => {
+          return (b.addedAt || 0) - (a.addedAt || 0);
+        });
+        setFavourites(sorted);
       } catch (e) {
         setFavourites([]);
+      }
+    }
+  };
+
+  const loadFavouriteAlbums = () => {
+    const saved = localStorage.getItem('favouriteAlbums');
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        // Sort by addedAt date (most recent first)
+        const sorted = parsed.sort((a: FavouriteAlbum, b: FavouriteAlbum) => {
+          return (b.addedAt || 0) - (a.addedAt || 0);
+        });
+        setFavouriteAlbums(sorted);
+      } catch (e) {
+        setFavouriteAlbums([]);
+      }
+    }
+  };
+
+  const loadFavouritePlaylists = () => {
+    const saved = localStorage.getItem('favouritePlaylists');
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        // Sort by addedAt date (most recent first)
+        const sorted = parsed.sort((a: FavouritePlaylist, b: FavouritePlaylist) => {
+          return (b.addedAt || 0) - (a.addedAt || 0);
+        });
+        setFavouritePlaylists(sorted);
+      } catch (e) {
+        setFavouritePlaylists([]);
       }
     }
   };
@@ -50,6 +118,42 @@ const FavouritesPage: React.FC<FavouritesPageProps> = ({ onSongSelect }) => {
     const updated = favourites.filter(song => song.id !== songId);
     setFavourites(updated);
     localStorage.setItem('favouriteSongs', JSON.stringify(updated));
+  };
+
+  const removeFavouriteAlbum = (albumId: string) => {
+    const updated = favouriteAlbums.filter(album => album.id !== albumId);
+    setFavouriteAlbums(updated);
+    localStorage.setItem('favouriteAlbums', JSON.stringify(updated));
+  };
+
+  const removeFavouritePlaylist = (playlistId: string) => {
+    const updated = favouritePlaylists.filter(playlist => playlist.id !== playlistId);
+    setFavouritePlaylists(updated);
+    localStorage.setItem('favouritePlaylists', JSON.stringify(updated));
+  };
+
+  const handleMenuOpen = (event: React.MouseEvent<HTMLElement>, item: any) => {
+    event.stopPropagation();
+    setAnchorEl(event.currentTarget);
+    setSelectedItem(item);
+  };
+
+  const handleMenuClose = () => {
+    setAnchorEl(null);
+    setSelectedItem(null);
+  };
+
+  const handleRemove = () => {
+    if (selectedItem) {
+      if (activeTab === 0) {
+        removeFavourite(selectedItem.id);
+      } else if (activeTab === 1) {
+        removeFavouriteAlbum(selectedItem.id);
+      } else if (activeTab === 2) {
+        removeFavouritePlaylist(selectedItem.id);
+      }
+    }
+    handleMenuClose();
   };
 
   // Decode HTML entities in strings
@@ -72,6 +176,18 @@ const FavouritesPage: React.FC<FavouritesPageProps> = ({ onSongSelect }) => {
     return date.toLocaleDateString();
   };
 
+  const getTotalCount = () => {
+    if (activeTab === 0) return favourites.length;
+    if (activeTab === 1) return favouriteAlbums.length;
+    return favouritePlaylists.length;
+  };
+
+  const getTabLabel = () => {
+    if (activeTab === 0) return 'Songs';
+    if (activeTab === 1) return 'Albums';
+    return 'Playlists';
+  };
+
   return (
     <Box 
       sx={{ 
@@ -82,135 +198,404 @@ const FavouritesPage: React.FC<FavouritesPageProps> = ({ onSongSelect }) => {
       }}
     >
       <Container maxWidth="md">
-        <Box sx={{ px: 2, mb: 3 }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
-            <FavoriteIcon sx={{ color: 'primary.main', fontSize: 32 }} />
-            <Typography 
-              variant="h5" 
-              sx={{ 
-                color: 'text.primary', 
-                fontWeight: 'bold'
-              }}
-            >
-              Your Favourites
+        <Box sx={{ px: 2, mb: 2 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+              <FavoriteIcon sx={{ color: 'primary.main', fontSize: 32 }} />
+              <Typography 
+                variant="h5" 
+                sx={{ 
+                  color: 'text.primary', 
+                  fontWeight: 'bold'
+                }}
+              >
+                Your Library
+              </Typography>
+            </Box>
+            <Typography variant="body2" sx={{ color: 'text.secondary', fontWeight: 500 }}>
+              {getTotalCount()} {getTabLabel().toLowerCase()}
             </Typography>
           </Box>
-          <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-            {favourites.length} {favourites.length === 1 ? 'song' : 'songs'}
-          </Typography>
-        </Box>
 
-        {favourites.length === 0 ? (
-          <Box
+          {/* Tabs */}
+          <Tabs
+            value={activeTab}
+            onChange={(_, newValue) => setActiveTab(newValue)}
             sx={{
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              justifyContent: 'center',
-              minHeight: '60vh',
-              gap: 2,
-              px: 3,
+              borderBottom: 1,
+              borderColor: 'divider',
+              '& .MuiTab-root': {
+                textTransform: 'none',
+                fontWeight: 500,
+                fontSize: '0.95rem',
+                minWidth: 80,
+              },
+              '& .Mui-selected': {
+                color: 'primary.main',
+                fontWeight: 600,
+              },
             }}
           >
-            <FavoriteIcon sx={{ fontSize: 80, color: 'text.disabled', opacity: 0.3 }} />
-            <Typography variant="h6" sx={{ color: 'text.secondary', textAlign: 'center' }}>
-              No favourite songs yet
-            </Typography>
-            <Typography variant="body2" sx={{ color: 'text.disabled', textAlign: 'center' }}>
-              Add songs to your favourites by tapping the heart icon while playing
-            </Typography>
-          </Box>
-        ) : (
-          <List sx={{ px: 2 }}>
-            {favourites.map((song) => (
-              <ListItem
-                key={song.id}
+            <Tab label="Songs" />
+            <Tab label="Albums" />
+            <Tab label="Playlists" />
+          </Tabs>
+        </Box>
+
+        {/* Songs Tab */}
+        {activeTab === 0 && (
+          <>
+            {favourites.length === 0 ? (
+              <Box
                 sx={{
-                  borderRadius: 1,
-                  mb: 0.5,
-                  px: 1,
-                  py: 1.5,
-                  '&:hover': {
-                    bgcolor: (theme) =>
-                      theme.palette.mode === 'light'
-                        ? 'rgba(0, 188, 212, 0.08)'
-                        : 'rgba(255, 255, 255, 0.05)',
-                  },
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  minHeight: '50vh',
+                  gap: 2,
+                  px: 3,
                 }}
-                secondaryAction={
-                  <IconButton
-                    edge="end"
-                    onClick={() => removeFavourite(song.id)}
+              >
+                <MusicNoteIcon sx={{ fontSize: 80, color: 'text.disabled', opacity: 0.3 }} />
+                <Typography variant="h6" sx={{ color: 'text.secondary', textAlign: 'center' }}>
+                  No favourite songs yet
+                </Typography>
+                <Typography variant="body2" sx={{ color: 'text.disabled', textAlign: 'center' }}>
+                  Add songs to your library by tapping the heart icon
+                </Typography>
+              </Box>
+            ) : (
+              <List sx={{ px: 2 }}>
+                {favourites.map((song) => (
+                  <ListItem
+                    key={song.id}
                     sx={{
-                      color: 'error.main',
+                      borderRadius: 1,
+                      mb: 0.5,
+                      px: 1,
+                      py: 1.5,
                       '&:hover': {
-                        bgcolor: 'error.light',
-                        color: 'error.dark',
+                        bgcolor: (theme) =>
+                          theme.palette.mode === 'light'
+                            ? 'rgba(0, 188, 212, 0.08)'
+                            : 'rgba(255, 255, 255, 0.05)',
                       },
                     }}
-                  >
-                    <DeleteIcon />
-                  </IconButton>
-                }
-              >
-                <ListItemAvatar 
-                  sx={{ minWidth: 72, cursor: 'pointer' }}
-                  onClick={() => onSongSelect(song.id)}
-                >
-                  <Avatar
-                    src={song.albumArt}
-                    variant="rounded"
-                    sx={{ width: 56, height: 56 }}
-                  >
-                    <MusicNoteIcon />
-                  </Avatar>
-                </ListItemAvatar>
-                <ListItemText
-                  onClick={() => onSongSelect(song.id)}
-                  sx={{ 
-                    cursor: 'pointer',
-                    mr: 1,
-                    minWidth: 0,
-                    flex: 1
-                  }}
-                  primary={
-                    <Typography
-                      sx={{
-                        color: 'text.primary',
-                        fontWeight: 500,
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                        whiteSpace: 'nowrap',
-                        pr: 1
-                      }}
-                    >
-                      {decodeHtmlEntities(song.name)}
-                    </Typography>
-                  }
-                  secondary={
-                    <Box sx={{ pr: 1 }}>
-                      <Typography
-                        variant="body2"
-                        sx={{
-                          color: 'text.secondary',
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis',
-                          whiteSpace: 'nowrap',
-                        }}
+                    secondaryAction={
+                      <IconButton
+                        edge="end"
+                        onClick={(e) => handleMenuOpen(e, song)}
+                        sx={{ color: 'text.secondary' }}
                       >
-                        {decodeHtmlEntities(song.artist)}
-                      </Typography>
-                      <Typography variant="caption" sx={{ color: 'text.disabled' }}>
-                        Added {formatDate(song.addedAt)}
-                      </Typography>
-                    </Box>
-                  }
-                  secondaryTypographyProps={{ component: 'div' }}
-                />
-              </ListItem>
-            ))}
-          </List>
+                        <MoreVertIcon />
+                      </IconButton>
+                    }
+                  >
+                    <ListItemAvatar 
+                      sx={{ minWidth: 72, cursor: 'pointer' }}
+                      onClick={() => onSongSelect(song.id)}
+                    >
+                      <Avatar
+                        src={song.albumArt}
+                        variant="rounded"
+                        sx={{ width: 56, height: 56 }}
+                      >
+                        <MusicNoteIcon />
+                      </Avatar>
+                    </ListItemAvatar>
+                    <ListItemText
+                      onClick={() => onSongSelect(song.id)}
+                      sx={{ 
+                        cursor: 'pointer',
+                        mr: 1.5,
+                        pr: 0.5,
+                        minWidth: 0,
+                        flex: 1
+                      }}
+                      primary={
+                        <Typography
+                          sx={{
+                            color: 'text.primary',
+                            fontWeight: 500,
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            whiteSpace: 'nowrap',
+                          }}
+                        >
+                          {decodeHtmlEntities(song.name)}
+                        </Typography>
+                      }
+                      secondary={
+                        <Box>
+                          <Typography
+                            variant="body2"
+                            sx={{
+                              color: 'text.secondary',
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              whiteSpace: 'nowrap',
+                            }}
+                          >
+                            {decodeHtmlEntities(song.artist)}
+                          </Typography>
+                          <Typography variant="caption" sx={{ color: 'text.disabled', display: 'block', mt: 0.25 }}>
+                            Added {formatDate(song.addedAt)}
+                          </Typography>
+                        </Box>
+                      }
+                      secondaryTypographyProps={{ component: 'div' }}
+                    />
+                  </ListItem>
+                ))}
+              </List>
+            )}
+          </>
         )}
+
+        {/* Albums Tab */}
+        {activeTab === 1 && (
+          <>
+            {favouriteAlbums.length === 0 ? (
+              <Box
+                sx={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  minHeight: '50vh',
+                  gap: 2,
+                  px: 3,
+                }}
+              >
+                <AlbumIcon sx={{ fontSize: 80, color: 'text.disabled', opacity: 0.3 }} />
+                <Typography variant="h6" sx={{ color: 'text.secondary', textAlign: 'center' }}>
+                  No favourite albums yet
+                </Typography>
+                <Typography variant="body2" sx={{ color: 'text.disabled', textAlign: 'center' }}>
+                  Add albums to your library
+                </Typography>
+              </Box>
+            ) : (
+              <List sx={{ px: 2 }}>
+                {favouriteAlbums.map((album) => (
+                  <ListItem
+                    key={album.id}
+                    sx={{
+                      borderRadius: 1,
+                      mb: 0.5,
+                      px: 1,
+                      py: 1.5,
+                      cursor: 'pointer',
+                      '&:hover': {
+                        bgcolor: (theme) =>
+                          theme.palette.mode === 'light'
+                            ? 'rgba(0, 188, 212, 0.08)'
+                            : 'rgba(255, 255, 255, 0.05)',
+                      },
+                    }}
+                    secondaryAction={
+                      <IconButton
+                        edge="end"
+                        onClick={(e) => handleMenuOpen(e, album)}
+                        sx={{ color: 'text.secondary' }}
+                      >
+                        <MoreVertIcon />
+                      </IconButton>
+                    }
+                  >
+                    <ListItemAvatar sx={{ minWidth: 72 }}>
+                      <Avatar
+                        src={album.image}
+                        variant="rounded"
+                        sx={{ width: 56, height: 56 }}
+                      >
+                        <AlbumIcon />
+                      </Avatar>
+                    </ListItemAvatar>
+                    <ListItemText
+                      sx={{
+                        mr: 1.5,
+                        pr: 0.5,
+                        minWidth: 0,
+                        flex: 1
+                      }}
+                      primary={
+                        <Typography
+                          sx={{
+                            color: 'text.primary',
+                            fontWeight: 500,
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            whiteSpace: 'nowrap',
+                          }}
+                        >
+                          {decodeHtmlEntities(album.name)}
+                        </Typography>
+                      }
+                      secondary={
+                        <Box>
+                          <Typography
+                            variant="body2"
+                            sx={{
+                              color: 'text.secondary',
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              whiteSpace: 'nowrap',
+                            }}
+                          >
+                            {decodeHtmlEntities(album.artist)}
+                          </Typography>
+                          <Typography variant="caption" sx={{ color: 'text.disabled', display: 'block', mt: 0.25 }}>
+                            Added {formatDate(album.addedAt)}
+                          </Typography>
+                        </Box>
+                      }
+                      secondaryTypographyProps={{ component: 'div' }}
+                    />
+                  </ListItem>
+                ))}
+              </List>
+            )}
+          </>
+        )}
+
+        {/* Playlists Tab */}
+        {activeTab === 2 && (
+          <>
+            {favouritePlaylists.length === 0 ? (
+              <Box
+                sx={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  minHeight: '50vh',
+                  gap: 2,
+                  px: 3,
+                }}
+              >
+                <PlaylistPlayIcon sx={{ fontSize: 80, color: 'text.disabled', opacity: 0.3 }} />
+                <Typography variant="h6" sx={{ color: 'text.secondary', textAlign: 'center' }}>
+                  No favourite playlists yet
+                </Typography>
+                <Typography variant="body2" sx={{ color: 'text.disabled', textAlign: 'center' }}>
+                  Add playlists to your library
+                </Typography>
+              </Box>
+            ) : (
+              <List sx={{ px: 2 }}>
+                {favouritePlaylists.map((playlist) => (
+                  <ListItem
+                    key={playlist.id}
+                    sx={{
+                      borderRadius: 1,
+                      mb: 0.5,
+                      px: 1,
+                      py: 1.5,
+                      cursor: 'pointer',
+                      '&:hover': {
+                        bgcolor: (theme) =>
+                          theme.palette.mode === 'light'
+                            ? 'rgba(0, 188, 212, 0.08)'
+                            : 'rgba(255, 255, 255, 0.05)',
+                      },
+                    }}
+                    secondaryAction={
+                      <IconButton
+                        edge="end"
+                        onClick={(e) => handleMenuOpen(e, playlist)}
+                        sx={{ color: 'text.secondary' }}
+                      >
+                        <MoreVertIcon />
+                      </IconButton>
+                    }
+                  >
+                    <ListItemAvatar sx={{ minWidth: 72 }}>
+                      <Avatar
+                        src={playlist.image}
+                        variant="rounded"
+                        sx={{ width: 56, height: 56 }}
+                      >
+                        <PlaylistPlayIcon />
+                      </Avatar>
+                    </ListItemAvatar>
+                    <ListItemText
+                      sx={{
+                        mr: 1.5,
+                        pr: 0.5,
+                        minWidth: 0,
+                        flex: 1
+                      }}
+                      primary={
+                        <Typography
+                          sx={{
+                            color: 'text.primary',
+                            fontWeight: 500,
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            whiteSpace: 'nowrap',
+                          }}
+                        >
+                          {decodeHtmlEntities(playlist.name)}
+                        </Typography>
+                      }
+                      secondary={
+                        <Box>
+                          <Typography
+                            variant="body2"
+                            sx={{
+                              color: 'text.secondary',
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              whiteSpace: 'nowrap',
+                            }}
+                          >
+                            {playlist.description || 'Playlist'}
+                          </Typography>
+                          <Typography variant="caption" sx={{ color: 'text.disabled', display: 'block', mt: 0.25 }}>
+                            Added {formatDate(playlist.addedAt)}
+                          </Typography>
+                        </Box>
+                      }
+                      secondaryTypographyProps={{ component: 'div' }}
+                    />
+                  </ListItem>
+                ))}
+              </List>
+            )}
+          </>
+        )}
+
+        {/* Context Menu */}
+        <Menu
+          anchorEl={anchorEl}
+          open={Boolean(anchorEl)}
+          onClose={handleMenuClose}
+          anchorOrigin={{
+            vertical: 'bottom',
+            horizontal: 'right',
+          }}
+          transformOrigin={{
+            vertical: 'top',
+            horizontal: 'right',
+          }}
+        >
+          {activeTab === 0 && (
+            <MenuItem onClick={() => { onSongSelect(selectedItem?.id); handleMenuClose(); }}>
+              <ListItemIcon>
+                <PlayArrowIcon fontSize="small" />
+              </ListItemIcon>
+              <Typography variant="body2">Play Now</Typography>
+            </MenuItem>
+          )}
+          <MenuItem onClick={handleRemove} sx={{ color: 'error.main' }}>
+            <ListItemIcon>
+              <DeleteIcon fontSize="small" sx={{ color: 'error.main' }} />
+            </ListItemIcon>
+            <Typography variant="body2">Remove from Library</Typography>
+          </MenuItem>
+        </Menu>
       </Container>
     </Box>
   );

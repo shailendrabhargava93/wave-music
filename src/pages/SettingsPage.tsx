@@ -315,7 +315,16 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
         <Alert 
           onClose={() => setSnackbarOpen(false)} 
           severity="success"
-          sx={{ width: '100%' }}
+          sx={{ 
+            width: '100%',
+            bgcolor: 'background.paper',
+            color: 'text.primary',
+            border: '1px solid',
+            borderColor: 'divider',
+            '& .MuiAlert-icon': {
+              color: 'success.main'
+            }
+          }}
         >
           {snackbarMessage}
         </Alert>

@@ -8,7 +8,7 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['wave-logo.png', 'vite.svg'],
+      includeAssets: ['wave-logo.svg', 'vite.svg'],
       manifest: {
         name: 'Wave Music',
         short_name: 'Wave Music',
@@ -21,13 +21,13 @@ export default defineConfig({
         orientation: 'portrait',
         icons: [
           {
-            src: '/wave-logo.png',
+            src: '/wave-logo.svg',
             sizes: '192x192',
             type: 'image/png',
             purpose: 'any maskable'
           },
           {
-            src: '/wave-logo.png',
+            src: '/wave-logo.svg',
             sizes: '512x512',
             type: 'image/png',
             purpose: 'any maskable'

@@ -98,4 +98,5 @@ export interface CurrentSong {
   copyright?: string;
   year?: string;
   language?: string;
+  explicitContent?: boolean;
 }

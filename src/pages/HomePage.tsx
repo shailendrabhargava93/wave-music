@@ -14,6 +14,8 @@ interface HomePageProps {
   onViewAllCharts: () => void;
   onAlbumSelect: (albumId: string, albumName: string, albumImage: string) => void;
   onPlaylistSelect: (playlistId: string, playlistName: string, playlistImage: string) => void;
+  onRecentlyPlayedClick?: () => void;
+  onSettingsClick?: () => void;
 }
 
 interface ChartSongWithSaavn extends SoundChartsItem {
@@ -21,7 +23,7 @@ interface ChartSongWithSaavn extends SoundChartsItem {
   isSearching?: boolean;
 }
 
-const HomePage: React.FC<HomePageProps> = ({ onSongSelect, chartSongs, chartSongsLoading, onViewAllCharts, onAlbumSelect, onPlaylistSelect }) => {
+const HomePage: React.FC<HomePageProps> = ({ onSongSelect, chartSongs, chartSongsLoading, onViewAllCharts, onAlbumSelect, onPlaylistSelect, onRecentlyPlayedClick, onSettingsClick }) => {
   const [displayedSongs, setDisplayedSongs] = useState<ChartSongWithSaavn[]>([]);
   const [latestAlbums, setLatestAlbums] = useState<any[]>([]);
   const [albumsLoading, setAlbumsLoading] = useState(true);
@@ -37,10 +39,30 @@ const HomePage: React.FC<HomePageProps> = ({ onSongSelect, chartSongs, chartSong
       
       try {
         setAlbumsLoading(true);
+        
+        // Check localStorage cache
+        const cachedData = localStorage.getItem('latestAlbums');
+        const cacheTimestamp = localStorage.getItem('latestAlbumsTimestamp');
+        const cacheExpiry = 24 * 60 * 60 * 1000; // 24 hours
+        
+        if (cachedData && cacheTimestamp) {
+          const age = Date.now() - parseInt(cacheTimestamp);
+          if (age < cacheExpiry) {
+            setLatestAlbums(JSON.parse(cachedData));
+            setAlbumsFetched(true);
+            setAlbumsLoading(false);
+            return;
+          }
+        }
+        
         const response = await saavnApi.searchAlbums('latest', 10);
         if (response?.data?.results) {
-          setLatestAlbums(response.data.results.slice(0, 10));
-          setAlbumsFetched(true); // Mark as fetched
+          const albums = response.data.results.slice(0, 10);
+          setLatestAlbums(albums);
+          setAlbumsFetched(true);
+          // Cache the data
+          localStorage.setItem('latestAlbums', JSON.stringify(albums));
+          localStorage.setItem('latestAlbumsTimestamp', Date.now().toString());
         }
       } catch (error) {
         // Error fetching albums
@@ -59,10 +81,30 @@ const HomePage: React.FC<HomePageProps> = ({ onSongSelect, chartSongs, chartSong
       
       try {
         setPlaylistsLoading(true);
+        
+        // Check localStorage cache
+        const cachedData = localStorage.getItem('trendingPlaylists');
+        const cacheTimestamp = localStorage.getItem('trendingPlaylistsTimestamp');
+        const cacheExpiry = 24 * 60 * 60 * 1000; // 24 hours
+        
+        if (cachedData && cacheTimestamp) {
+          const age = Date.now() - parseInt(cacheTimestamp);
+          if (age < cacheExpiry) {
+            setTrendingPlaylists(JSON.parse(cachedData));
+            setPlaylistsFetched(true);
+            setPlaylistsLoading(false);
+            return;
+          }
+        }
+        
         const response = await saavnApi.searchPlaylists('2025', 10);
         if (response?.data?.results) {
-          setTrendingPlaylists(response.data.results.slice(0, 10));
+          const playlists = response.data.results.slice(0, 10);
+          setTrendingPlaylists(playlists);
           setPlaylistsFetched(true);
+          // Cache the data
+          localStorage.setItem('trendingPlaylists', JSON.stringify(playlists));
+          localStorage.setItem('trendingPlaylistsTimestamp', Date.now().toString());
         }
       } catch (error) {
         // Error fetching playlists
@@ -117,7 +159,10 @@ const HomePage: React.FC<HomePageProps> = ({ onSongSelect, chartSongs, chartSong
 
   return (
     <Box sx={{ pb: 16 }}>
-      <Header />
+      <Header 
+        onRecentlyPlayedClick={onRecentlyPlayedClick}
+        onSettingsClick={onSettingsClick}
+      />
       
       <Box sx={{ px: 2, pt: 2 }}>
         {/* Latest Albums Section */}

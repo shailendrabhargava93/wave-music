@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { ThemeProvider, CssBaseline, Box, Container } from '@mui/material';
+import { ThemeProvider, CssBaseline, Box, Container, Snackbar } from '@mui/material';
 import { darkTheme, lightTheme } from './theme';
 import BottomNav from './components/BottomNav';
 import MusicPlayer from './components/MusicPlayer';
@@ -11,6 +11,8 @@ import WelcomeScreen from './pages/WelcomeScreen';
 import PlaylistPage from './pages/PlaylistPage';
 import FavouritesPage from './pages/FavouritesPage';
 import AllSongsPage from './pages/AllSongsPage';
+import RecentlyPlayedPage from './pages/RecentlyPlayedPage';
+import ExplorePage from './pages/ExplorePage';
 import { Song, CurrentSong } from './types/api';
 import { saavnApi } from './services/saavnApi';
 import { soundChartsApi, SoundChartsItem } from './services/soundChartsApi';
@@ -38,6 +40,18 @@ function App() {
   const [fullPlayerOpen, setFullPlayerOpen] = useState(false);
   const [currentSong, setCurrentSong] = useState<CurrentSong | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
+  const [isLoadingSong, setIsLoadingSong] = useState(false);
+  const [songProgress, setSongProgress] = useState(0);
+  
+  // Queue management
+  const [songQueue, setSongQueue] = useState<Song[]>([]);
+  
+  // Snackbar state
+  const [snackbarOpen, setSnackbarOpen] = useState(false);
+  const [snackbarMessage, setSnackbarMessage] = useState('');
+  
+  // Recently played page state
+  const [showRecentlyPlayed, setShowRecentlyPlayed] = useState(false);
   
   // Playlist state
   const [selectedPlaylist, setSelectedPlaylist] = useState<{
@@ -261,10 +275,14 @@ function App() {
 
   const handleSongSelect = async (song: Song) => {
     try {
+      // Set loading state
+      setIsLoadingSong(true);
+      
       // Fetch complete song details with download URLs
       const songDetailsResponse = await saavnApi.getSongsByIds([song.id]);
       
       if (!songDetailsResponse.success || !songDetailsResponse.data || songDetailsResponse.data.length === 0) {
+        setIsLoadingSong(false);
         return;
       }
       
@@ -307,6 +325,7 @@ function App() {
       const artistNames = getArtistNames(songDetails.artists);
 
       if (!audioUrl) {
+        setIsLoadingSong(false);
         return;
       }
 
@@ -323,17 +342,60 @@ function App() {
         copyright: songDetails.copyright || 'Copyright information not available',
         year: songDetails.year || 'Unknown Year',
         language: songDetails.language || 'Unknown Language',
+        explicitContent: songDetails.explicitContent || false,
       };
 
       setCurrentSong(newSong);
       setIsPlaying(true);
+      setIsLoadingSong(false);
+      
+      // Add to recently played in localStorage with complete song details
+      const recentlyPlayed = JSON.parse(localStorage.getItem('recentlyPlayed') || '[]');
+      // Remove if already exists to avoid duplicates
+      const filtered = recentlyPlayed.filter((s: Song) => s.id !== songDetails.id);
+      
+      // Create a proper Song object with primaryArtists as string
+      const recentSong: Song = {
+        id: songDetails.id,
+        name: songDetails.name,
+        album: songDetails.album,
+        year: songDetails.year || '',
+        releaseDate: songDetails.releaseDate || '',
+        duration: songDetails.duration || 0,
+        label: songDetails.label || '',
+        primaryArtists: artistNames, // Use the extracted artist names string
+        primaryArtistsId: songDetails.artists?.primary?.map((a: any) => a.id).join(',') || '',
+        featuredArtists: songDetails.artists?.featured?.map((a: any) => a.name).join(', ') || '',
+        featuredArtistsId: songDetails.artists?.featured?.map((a: any) => a.id).join(',') || '',
+        explicitContent: songDetails.explicitContent || 0,
+        playCount: songDetails.playCount || 0,
+        language: songDetails.language || '',
+        hasLyrics: songDetails.hasLyrics || false,
+        url: songDetails.url || '',
+        copyright: songDetails.copyright || '',
+        image: songDetails.image || [],
+        downloadUrl: songDetails.downloadUrl || [],
+      };
+      
+      // Add to the beginning with complete details
+      filtered.unshift(recentSong);
+      // Keep only last 50 songs
+      const limited = filtered.slice(0, 50);
+      localStorage.setItem('recentlyPlayed', JSON.stringify(limited));
       // Don't automatically open full player, just start playing
     } catch (error) {
       // Error loading song
+      setIsLoadingSong(false);
     }
   };
 
   const handleNextSong = () => {
+    // Check if there's a song in the queue first
+    if (handleNextSongFromQueue()) {
+      return;
+    }
+    
+    // Otherwise, play from chart songs
     if (chartSongs.length === 0) return;
     
     // Find current song index in chartSongs
@@ -398,6 +460,46 @@ function App() {
     // Reset showAllCharts and selectedPlaylist when navigating via bottom nav
     setShowAllCharts(false);
     setSelectedPlaylist(null);
+    setShowRecentlyPlayed(false);
+  };
+
+  const handleRecentlyPlayedClick = () => {
+    setShowRecentlyPlayed(true);
+    setShowAllCharts(false);
+    setSelectedPlaylist(null);
+  };
+
+  const handleBackFromRecentlyPlayed = () => {
+    setShowRecentlyPlayed(false);
+  };
+
+  const handleSettingsClick = () => {
+    setActiveTab('settings');
+    setShowRecentlyPlayed(false);
+    setShowAllCharts(false);
+    setSelectedPlaylist(null);
+  };
+
+  const handleAddToQueue = (song: Song) => {
+    setSongQueue(prev => [...prev, song]);
+    setSnackbarMessage('Added to queue');
+    setSnackbarOpen(true);
+  };
+
+  const handlePlayNext = (song: Song) => {
+    setSongQueue(prev => [song, ...prev]);
+    setSnackbarMessage('Will play next');
+    setSnackbarOpen(true);
+  };
+
+  const handleNextSongFromQueue = () => {
+    if (songQueue.length > 0) {
+      const [nextSong, ...remainingQueue] = songQueue;
+      setSongQueue(remainingQueue);
+      handleSongSelect(nextSong);
+      return true;
+    }
+    return false;
   };
 
   const handleFavouriteSongSelect = async (songId: string) => {
@@ -441,6 +543,22 @@ function App() {
   };
 
   const renderContent = () => {
+    // Show recently played page if activated
+    if (showRecentlyPlayed) {
+      return (
+        <RecentlyPlayedPage
+          onBack={handleBackFromRecentlyPlayed}
+          onSongSelect={handleSongSelect}
+          onAddToQueue={handleAddToQueue}
+          onPlayNext={handlePlayNext}
+          onShowSnackbar={(msg) => {
+            setSnackbarMessage(msg);
+            setSnackbarOpen(true);
+          }}
+        />
+      );
+    }
+
     // Show all chart songs page if activated
     if (showAllCharts) {
       return (
@@ -462,6 +580,12 @@ function App() {
           onBack={handleBackFromPlaylist}
           onSongSelect={handleSongSelect}
           type={selectedPlaylist.type}
+          onAddToQueue={handleAddToQueue}
+          onPlayNext={handlePlayNext}
+          onShowSnackbar={(msg) => {
+            setSnackbarMessage(msg);
+            setSnackbarOpen(true);
+          }}
         />
       );
     }
@@ -475,6 +599,14 @@ function App() {
             chartSongsLoading={chartSongsLoading}
             onViewAllCharts={handleViewAllCharts}
             onAlbumSelect={handleAlbumSelect}
+            onPlaylistSelect={handlePlaylistSelect}
+            onRecentlyPlayedClick={handleRecentlyPlayedClick}
+            onSettingsClick={handleSettingsClick}
+          />
+        );
+      case 'explore':
+        return (
+          <ExplorePage 
             onPlaylistSelect={handlePlaylistSelect}
           />
         );
@@ -531,6 +663,9 @@ function App() {
                 artist={currentSong.artist}
                 albumArt={currentSong.albumArt}
                 isPlaying={isPlaying}
+                isLoading={isLoadingSong}
+                progress={songProgress}
+                duration={currentSong.duration}
                 onTogglePlay={() => setIsPlaying(!isPlaying)}
                 onOpenFullPlayer={() => setFullPlayerOpen(true)}
                 onNextSong={handleNextSong}
@@ -550,6 +685,9 @@ function App() {
                 onNextSong={handleNextSong}
                 onPreviousSong={handlePreviousSong}
                 onSongSelect={handleSongSelect}
+                songQueue={songQueue}
+                progress={songProgress}
+                onProgressChange={setSongProgress}
                 // Song details for info popup
                 albumId={currentSong.albumId}
                 albumName={currentSong.albumName}
@@ -557,11 +695,36 @@ function App() {
                 copyright={currentSong.copyright}
                 year={currentSong.year}
                 language={currentSong.language}
+                explicitContent={currentSong.explicitContent}
               />
             </>
           )}
           <BottomNav activeTab={activeTab} onTabChange={handleTabChange} />
           <InstallPrompt />
+          
+          {/* Global Snackbar */}
+          <Snackbar
+            open={snackbarOpen}
+            autoHideDuration={2000}
+            onClose={() => setSnackbarOpen(false)}
+            anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+            sx={{ bottom: { xs: 80, sm: 24 } }}
+          >
+            <Box
+              sx={{
+                bgcolor: 'background.paper',
+                color: 'text.primary',
+                px: 3,
+                py: 1.5,
+                borderRadius: 2,
+                boxShadow: 3,
+                border: '1px solid',
+                borderColor: 'divider',
+              }}
+            >
+              {snackbarMessage}
+            </Box>
+          </Snackbar>
         </Box>
       )}
     </ThemeProvider>

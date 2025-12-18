@@ -13,7 +13,7 @@ import {
   List,
   ListItem,
   ListItemText,
-  Snackbar
+  Snackbar,
 } from '@mui/material';
 import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
 import FavoriteIcon from '@mui/icons-material/Favorite';
@@ -43,6 +43,9 @@ interface FullPlayerProps {
   onNextSong?: () => void;
   onPreviousSong?: () => void;
   onSongSelect?: (song: Song) => void;
+  songQueue?: Song[];
+  progress?: number;
+  onProgressChange?: (progress: number) => void;
   // Song details for info popup
   albumId?: string;
   albumName?: string;
@@ -50,6 +53,7 @@ interface FullPlayerProps {
   copyright?: string;
   year?: string;
   language?: string;
+  explicitContent?: boolean;
 }
 
 const FullPlayer: React.FC<FullPlayerProps> = ({ 
@@ -66,6 +70,9 @@ const FullPlayer: React.FC<FullPlayerProps> = ({
   onNextSong,
   onPreviousSong,
   onSongSelect,
+  songQueue = [],
+  progress: externalProgress = 0,
+  onProgressChange,
   albumId,
   albumName,
   label,
@@ -74,7 +81,7 @@ const FullPlayer: React.FC<FullPlayerProps> = ({
   language
 }) => {
   const [isFavorite, setIsFavorite] = useState(false);
-  const [progress, setProgress] = useState(0);
+  const [progress, setProgress] = useState(externalProgress);
   const [audio] = useState(() => new Audio());
   const [infoDialogOpen, setInfoDialogOpen] = useState(false);
   const [snackbarOpen, setSnackbarOpen] = useState(false);
@@ -82,6 +89,14 @@ const FullPlayer: React.FC<FullPlayerProps> = ({
   const [upNextOpen, setUpNextOpen] = useState(false);
   const [suggestions, setSuggestions] = useState<Song[]>([]);
   const [suggestionsLoading, setSuggestionsLoading] = useState(false);
+
+  // Merge queue with suggestions for Up Next display
+  const upNextSongs = [...songQueue, ...suggestions];
+
+  // Sync external progress
+  React.useEffect(() => {
+    setProgress(externalProgress);
+  }, [externalProgress]);
   const totalDuration = duration;
 
   // Decode HTML entities in strings
@@ -202,15 +217,20 @@ const FullPlayer: React.FC<FullPlayerProps> = ({
   useEffect(() => {
     const updateProgress = () => {
       if (audio.currentTime) {
-        setProgress(Math.floor(audio.currentTime));
+        const currentProgress = Math.floor(audio.currentTime);
+        setProgress(currentProgress);
+        if (onProgressChange) {
+          onProgressChange(currentProgress);
+        }
       }
     };
 
     const handleEnded = () => {
-      if (onTogglePlay) {
-        onTogglePlay(); // This will set isPlaying to false in App.tsx
-      }
       setProgress(0);
+      // Automatically play next song
+      if (onNextSong) {
+        onNextSong();
+      }
     };
 
     audio.addEventListener('timeupdate', updateProgress);
@@ -329,12 +349,13 @@ const FullPlayer: React.FC<FullPlayerProps> = ({
         </Box>
 
         {/* Song Info */}
-        <Box sx={{ mb: 2 }}>
+        <Box sx={{ mb: 2, maxWidth: 360, mx: 'auto', width: '100%' }}>
           <Box
             sx={{
               display: 'flex',
               justifyContent: 'space-between',
-              alignItems: 'center',
+              alignItems: 'flex-start',
+              gap: 1,
             }}
           >
             <Box sx={{ flex: 1, minWidth: 0 }}>
@@ -365,7 +386,10 @@ const FullPlayer: React.FC<FullPlayerProps> = ({
             </Box>
             <IconButton
               onClick={toggleFavorite}
-              sx={{ color: isFavorite ? 'primary.main' : 'text.secondary' }}
+              sx={{ 
+                color: isFavorite ? 'primary.main' : 'text.secondary',
+                mt: -0.5,
+              }}
               aria-label="favorite"
             >
               {isFavorite ? <FavoriteIcon /> : <FavoriteBorderIcon />}
@@ -374,7 +398,7 @@ const FullPlayer: React.FC<FullPlayerProps> = ({
         </Box>
 
         {/* Progress Bar */}
-        <Box sx={{ mb: 1 }}>
+        <Box sx={{ mb: 1, maxWidth: 360, mx: 'auto', width: '100%' }}>
           <Slider
             value={progress}
             min={0}
@@ -498,7 +522,7 @@ const FullPlayer: React.FC<FullPlayerProps> = ({
       <UpNextDrawer
         open={upNextOpen}
         onClose={() => setUpNextOpen(false)}
-        suggestions={suggestions}
+        suggestions={upNextSongs}
         loading={suggestionsLoading}
         onSongSelect={(song) => {
           if (onSongSelect) {
@@ -657,12 +681,14 @@ const FullPlayer: React.FC<FullPlayerProps> = ({
       >
         <Box
           sx={{
-            bgcolor: 'primary.main',
-            color: '#fff',
+            bgcolor: 'background.paper',
+            color: 'text.primary',
             px: 3,
             py: 1.5,
             borderRadius: 2,
             boxShadow: 3,
+            border: '1px solid',
+            borderColor: 'divider',
             display: 'flex',
             alignItems: 'center',
             gap: 1,
