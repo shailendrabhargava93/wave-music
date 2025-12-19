@@ -8,9 +8,10 @@ import ExploreIcon from '@mui/icons-material/Explore';
 interface BottomNavProps {
   activeTab: string;
   onTabChange: (tab: string) => void;
+  showLabels?: boolean;
 }
 
-const BottomNav: React.FC<BottomNavProps> = ({ activeTab, onTabChange }) => {
+const BottomNav: React.FC<BottomNavProps> = ({ activeTab, onTabChange, showLabels = true }) => {
   const getTabIndex = (tab: string) => {
     switch (tab) {
       case 'home': return 0;
@@ -40,7 +41,7 @@ const BottomNav: React.FC<BottomNavProps> = ({ activeTab, onTabChange }) => {
       <BottomNavigation
         value={getTabIndex(activeTab)}
         onChange={handleChange}
-        showLabels
+        showLabels={showLabels}
         sx={{
           backgroundColor: 'background.paper',
           '& .MuiBottomNavigationAction-root': {
@@ -53,19 +54,19 @@ const BottomNav: React.FC<BottomNavProps> = ({ activeTab, onTabChange }) => {
         }}
       >
         <BottomNavigationAction 
-          label="Home" 
+          {...(showLabels && { label: "Home" })}
           icon={<HomeIcon />} 
         />
         <BottomNavigationAction 
-          label="Explore" 
+          {...(showLabels && { label: "Explore" })}
           icon={<ExploreIcon />} 
         />
         <BottomNavigationAction 
-          label="Search" 
+          {...(showLabels && { label: "Search" })}
           icon={<SearchIcon />} 
         />
         <BottomNavigationAction 
-          label="Library" 
+          {...(showLabels && { label: "Library" })}
           icon={<FavoriteIcon />} 
         />
       </BottomNavigation>

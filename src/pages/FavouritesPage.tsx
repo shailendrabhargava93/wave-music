@@ -194,12 +194,12 @@ const FavouritesPage: React.FC<FavouritesPageProps> = ({ onSongSelect }) => {
         minHeight: '100vh',
         bgcolor: 'background.default',
         pb: 16,
-        pt: 3
+        pt: 1.5
       }}
     >
       <Container maxWidth="md">
-        <Box sx={{ px: 2, mb: 2 }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
+        <Box sx={{ px: 2, mb: 1.5 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1.5 }}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
               <FavoriteIcon sx={{ color: 'primary.main', fontSize: 32 }} />
               <Typography 
@@ -221,6 +221,8 @@ const FavouritesPage: React.FC<FavouritesPageProps> = ({ onSongSelect }) => {
           <Tabs
             value={activeTab}
             onChange={(_, newValue) => setActiveTab(newValue)}
+            variant="scrollable"
+            scrollButtons="auto"
             sx={{
               borderBottom: 1,
               borderColor: 'divider',
@@ -365,7 +367,7 @@ const FavouritesPage: React.FC<FavouritesPageProps> = ({ onSongSelect }) => {
                   justifyContent: 'center',
                   minHeight: '50vh',
                   gap: 2,
-                  px: 3,
+                  px: 2,
                 }}
               >
                 <AlbumIcon sx={{ fontSize: 80, color: 'text.disabled', opacity: 0.3 }} />
@@ -385,7 +387,7 @@ const FavouritesPage: React.FC<FavouritesPageProps> = ({ onSongSelect }) => {
                       borderRadius: 1,
                       mb: 0.5,
                       px: 1,
-                      py: 1.5,
+                      py: 0.5,
                       cursor: 'pointer',
                       '&:hover': {
                         bgcolor: (theme) =>
@@ -472,7 +474,7 @@ const FavouritesPage: React.FC<FavouritesPageProps> = ({ onSongSelect }) => {
                   justifyContent: 'center',
                   minHeight: '50vh',
                   gap: 2,
-                  px: 3,
+                  px: 2,
                 }}
               >
                 <PlaylistPlayIcon sx={{ fontSize: 80, color: 'text.disabled', opacity: 0.3 }} />
@@ -492,7 +494,7 @@ const FavouritesPage: React.FC<FavouritesPageProps> = ({ onSongSelect }) => {
                       borderRadius: 1,
                       mb: 0.5,
                       px: 1,
-                      py: 1.5,
+                      py: 0.5,
                       cursor: 'pointer',
                       '&:hover': {
                         bgcolor: (theme) =>

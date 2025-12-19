@@ -245,7 +245,7 @@ const SearchPage: React.FC<SearchPageProps> = ({ onSongSelect, onPlaylistSelect,
   };
 
   return (
-    <Box sx={{ pb: 16, px: 2, pt: 2 }}>
+    <Box sx={{ pb: 16, px: 2, pt: 1 }}>
       {/* Search Input */}
       <TextField
         fullWidth
@@ -300,7 +300,7 @@ const SearchPage: React.FC<SearchPageProps> = ({ onSongSelect, onPlaylistSelect,
           },
         }}
         sx={{
-          mb: 3,
+          mb: 2,
           '& input': {
             color: 'text.primary',
           },
@@ -375,6 +375,8 @@ const SearchPage: React.FC<SearchPageProps> = ({ onSongSelect, onPlaylistSelect,
           <Tabs
             value={activeTab}
             onChange={(_, newValue) => setActiveTab(newValue)}
+            variant="scrollable"
+            scrollButtons="auto"
             sx={{
               borderBottom: 1,
               borderColor: 'divider',
@@ -512,7 +514,7 @@ const SearchPage: React.FC<SearchPageProps> = ({ onSongSelect, onPlaylistSelect,
                         cursor: 'pointer',
                         borderRadius: 1,
                         px: 1,
-                        py: 1,
+                        py: 0.5,
                         mb: 0.5,
                         '&:hover': {
                           bgcolor: 'action.hover',
@@ -592,7 +594,7 @@ const SearchPage: React.FC<SearchPageProps> = ({ onSongSelect, onPlaylistSelect,
                         cursor: 'pointer',
                         borderRadius: 1,
                         px: 1,
-                        py: 1,
+                        py: 0.5,
                         mb: 0.5,
                         '&:hover': {
                           bgcolor: 'action.hover',

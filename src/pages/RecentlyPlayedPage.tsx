@@ -125,8 +125,8 @@ const RecentlyPlayedPage: React.FC<RecentlyPlayedPageProps> = ({ onBack, onSongS
   return (
     <Box sx={{ pb: 10 }}>
       {/* Header */}
-      <Box sx={{ display: 'flex', alignItems: 'center', mb: 3, px: 2, pt: 2 }}>
-        <IconButton onClick={onBack} sx={{ mr: 1 }}>
+      <Box sx={{ display: 'flex', alignItems: 'center', mb: 2, px: 2, pt: 1, gap: 1 }}>
+        <IconButton onClick={onBack}>
           <ArrowBackIcon />
         </IconButton>
         <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flex: 1 }}>
@@ -166,7 +166,9 @@ const RecentlyPlayedPage: React.FC<RecentlyPlayedPageProps> = ({ onBack, onSongS
               onClick={() => onSongSelect(song)}
               sx={{
                 borderRadius: 1,
-                mb: 1,
+                mb: 0.5,
+                px: 1,
+                py: 0.5,
                 cursor: 'pointer',
                 '&:hover': {
                   backgroundColor: 'action.hover',

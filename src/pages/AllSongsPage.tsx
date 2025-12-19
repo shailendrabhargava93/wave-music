@@ -21,6 +21,11 @@ const AllSongsPage: React.FC<AllSongsPageProps> = ({ onSongSelect, chartSongs, o
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const observerTarget = useRef<HTMLDivElement>(null);
 
+  // Scroll to top when component mounts
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, []);
+
   // Update displayed songs when displayCount changes
   useEffect(() => {
     if (chartSongs.length > 0) {
@@ -108,9 +113,9 @@ const AllSongsPage: React.FC<AllSongsPageProps> = ({ onSongSelect, chartSongs, o
         sx={{
           display: 'flex',
           alignItems: 'center',
-          gap: 1.5,
+          gap: 1,
           px: 2,
-          pt: 1.5,
+          pt: 1,
           pb: 1.5,
           mb: 2,
         }}
@@ -171,7 +176,7 @@ const AllSongsPage: React.FC<AllSongsPageProps> = ({ onSongSelect, chartSongs, o
                   alignItems: 'center',
                   gap: 1.5,
                   mb: 1,
-                  p: 1.5,
+                  p: 0.5,
                   borderRadius: 1,
                   cursor: item.saavnData ? 'pointer' : 'default',
                   opacity: item.saavnData ? 1 : 0.7,

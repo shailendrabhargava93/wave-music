@@ -164,10 +164,10 @@ const HomePage: React.FC<HomePageProps> = ({ onSongSelect, chartSongs, chartSong
         onSettingsClick={onSettingsClick}
       />
       
-      <Box sx={{ px: 2, pt: 2 }}>
+      <Box sx={{ px: 2, pt: 1 }}>
         {/* Latest Albums Section */}
-        <Box sx={{ mb: 4 }}>
-          <Typography variant="h6" sx={{ color: 'text.secondary', mb: 2, fontWeight: 500 }}>
+        <Box sx={{ mb: 3 }}>
+          <Typography variant="h6" sx={{ color: 'text.secondary', mb: 1.5, fontWeight: 500 }}>
             Latest Albums
           </Typography>
 
@@ -307,18 +307,6 @@ const HomePage: React.FC<HomePageProps> = ({ onSongSelect, chartSongs, chartSong
                   >
                     {playlist.name}
                   </Typography>
-                  <Typography
-                    variant="caption"
-                    sx={{
-                      color: 'text.secondary',
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis',
-                      whiteSpace: 'nowrap',
-                      display: 'block',
-                    }}
-                  >
-                    {playlist.songCount} songs
-                  </Typography>
                 </Box>
               ))}
             </Box>
@@ -383,7 +371,7 @@ const HomePage: React.FC<HomePageProps> = ({ onSongSelect, chartSongs, chartSong
                   alignItems: 'center',
                   gap: 1.5,
                   mb: 1,
-                  p: 1.5,
+                  p: 0.5,
                   borderRadius: 1,
                   cursor: item.saavnData ? 'pointer' : 'default',
                   opacity: item.saavnData ? 1 : 0.7,

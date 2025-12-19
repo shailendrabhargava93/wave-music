@@ -19,17 +19,22 @@ import ShareIcon from '@mui/icons-material/Share';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 import DeleteSweepIcon from '@mui/icons-material/DeleteSweep';
+import LabelOffIcon from '@mui/icons-material/LabelOff';
 
 interface SettingsPageProps {
   isDarkMode: boolean;
   onThemeToggle: () => void;
   onNavigateHome?: () => void;
+  hideBottomNavText?: boolean;
+  onBottomNavTextToggle?: () => void;
 }
 
 const SettingsPage: React.FC<SettingsPageProps> = ({ 
   isDarkMode, 
   onThemeToggle,
-  onNavigateHome
+  onNavigateHome,
+  hideBottomNavText = false,
+  onBottomNavTextToggle
 }) => {
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState('');
@@ -68,7 +73,7 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
         minHeight: '100vh',
         bgcolor: 'background.default',
         pb: 10,
-        pt: 3
+        pt: 1.5
       }}
     >
       <Container maxWidth="md">
@@ -158,6 +163,62 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
               <Switch
                 checked={isDarkMode}
                 onChange={onThemeToggle}
+                sx={{
+                  '& .MuiSwitch-switchBase.Mui-checked': {
+                    color: 'primary.main',
+                  },
+                  '& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track': {
+                    backgroundColor: 'primary.main',
+                  },
+                }}
+              />
+            </ListItem>
+            
+            <Divider />
+
+            <ListItem
+              sx={{
+                py: 2,
+                px: 3,
+                '&:hover': {
+                  bgcolor: 'action.hover'
+                }
+              }}
+            >
+              <Box 
+                sx={{ 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  gap: 2,
+                  flex: 1
+                }}
+              >
+                <LabelOffIcon sx={{ color: 'primary.main' }} />
+                <ListItemText
+                  primary={
+                    <Typography 
+                      variant="body1" 
+                      sx={{ 
+                        fontWeight: 600,
+                        color: 'text.primary'
+                      }}
+                    >
+                      Hide Bottom Nav Text
+                    </Typography>
+                  }
+                  secondary={
+                    <Typography 
+                      variant="body2" 
+                      sx={{ color: 'text.secondary' }}
+                    >
+                      Show only icons in bottom navigation
+                    </Typography>
+                  }
+                />
+              </Box>
+              <Switch
+                checked={hideBottomNavText}
+                onChange={onBottomNavTextToggle}
                 sx={{
                   '& .MuiSwitch-switchBase.Mui-checked': {
                     color: 'primary.main',

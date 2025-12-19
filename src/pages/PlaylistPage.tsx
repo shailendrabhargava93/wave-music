@@ -9,7 +9,6 @@ import {
   ListItem,
   ListItemAvatar,
   ListItemText,
-  Button,
   Menu,
   MenuItem,
   ListItemIcon,
@@ -232,9 +231,9 @@ const PlaylistPage: React.FC<PlaylistPageProps> = ({
         sx={{
           display: 'flex',
           alignItems: 'center',
-          gap: 1.5,
+          gap: 1,
           px: 2,
-          pt: 1.5,
+          pt: 1,
           pb: 1.5,
           mb: 2,
         }}
@@ -366,7 +365,7 @@ const PlaylistPage: React.FC<PlaylistPageProps> = ({
             justifyContent: 'center',
             minHeight: '40vh',
             gap: 2,
-            px: 3,
+            px: 2,
           }}
         >
           <Typography variant="h6" sx={{ color: 'text.secondary' }}>
@@ -389,7 +388,7 @@ const PlaylistPage: React.FC<PlaylistPageProps> = ({
                   cursor: 'pointer',
                   borderRadius: 1,
                   px: 1,
-                  py: 1,
+                  py: 0.5,
                   mb: 0.5,
                   '&:hover': {
                     bgcolor: (theme) =>

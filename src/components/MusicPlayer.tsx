@@ -28,8 +28,7 @@ const MusicPlayer: React.FC<MusicPlayerProps> = ({
   duration = 0,
   onTogglePlay,
   onOpenFullPlayer,
-  onNextSong,
-  onPreviousSong
+  onNextSong
 }) => {
   const togglePlay = () => {
     if (onTogglePlay) {

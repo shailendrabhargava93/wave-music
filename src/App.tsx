@@ -36,6 +36,12 @@ function App() {
     return savedTheme ? savedTheme === 'dark' : true; // Default to dark
   });
 
+  // Bottom nav text visibility state
+  const [hideBottomNavText, setHideBottomNavText] = useState(() => {
+    const savedPref = localStorage.getItem('hideBottomNavText');
+    return savedPref === 'true';
+  });
+
   const [activeTab, setActiveTab] = useState('home');
   const [fullPlayerOpen, setFullPlayerOpen] = useState(false);
   const [currentSong, setCurrentSong] = useState<CurrentSong | null>(null);
@@ -75,8 +81,17 @@ function App() {
     localStorage.setItem('theme', isDarkMode ? 'dark' : 'light');
   }, [isDarkMode]);
 
+  // Save bottom nav text preference to localStorage
+  useEffect(() => {
+    localStorage.setItem('hideBottomNavText', hideBottomNavText.toString());
+  }, [hideBottomNavText]);
+
   const handleThemeToggle = () => {
     setIsDarkMode(prev => !prev);
+  };
+
+  const handleBottomNavTextToggle = () => {
+    setHideBottomNavText(prev => !prev);
   };
 
   const handleGetStarted = () => {
@@ -625,6 +640,8 @@ function App() {
             isDarkMode={isDarkMode}
             onThemeToggle={handleThemeToggle}
             onNavigateHome={() => setActiveTab('home')}
+            hideBottomNavText={hideBottomNavText}
+            onBottomNavTextToggle={handleBottomNavTextToggle}
           />
         );
       case 'favourites':
@@ -703,7 +720,7 @@ function App() {
               />
             </>
           )}
-          <BottomNav activeTab={activeTab} onTabChange={handleTabChange} />
+          <BottomNav activeTab={activeTab} onTabChange={handleTabChange} showLabels={!hideBottomNavText} />
           <InstallPrompt />
           
           {/* Global Snackbar */}

@@ -123,8 +123,8 @@ const ExplorePage: React.FC<ExplorePageProps> = ({ onPlaylistSelect }) => {
     return (
       <Box sx={{ pb: 10 }}>
         {/* Header */}
-        <Box sx={{ display: 'flex', alignItems: 'center', mb: 3, px: 2, pt: 2 }}>
-          <IconButton onClick={handleBack} sx={{ mr: 1 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', mb: 2, px: 2, pt: 1, gap: 1 }}>
+          <IconButton onClick={handleBack}>
             <ArrowBackIcon />
           </IconButton>
           <Typography variant="h6" sx={{ fontWeight: 600 }}>
@@ -194,7 +194,7 @@ const ExplorePage: React.FC<ExplorePageProps> = ({ onPlaylistSelect }) => {
   }
 
   return (
-    <Box sx={{ pb: 10, px: 2, pt: 2 }}>
+    <Box sx={{ pb: 10, px: 2, pt: 1 }}>
       {/* Moods & Moments Section */}
       <Typography variant="h6" sx={{ fontWeight: 'bold', mb: 2, color: 'text.primary' }}>
         Moods & moments
