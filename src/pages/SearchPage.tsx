@@ -24,7 +24,7 @@ import PlaylistPlayIcon from '@mui/icons-material/PlaylistPlay';
 import AlbumIcon from '@mui/icons-material/Album';
 import ClearIcon from '@mui/icons-material/Clear';
 import HistoryIcon from '@mui/icons-material/History';
-import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
+import ClearAllIcon from '@mui/icons-material/ClearAll';
 import MoreVertIcon from '@mui/icons-material/MoreVert';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import QueueMusicIcon from '@mui/icons-material/QueueMusic';
@@ -386,16 +386,12 @@ const SearchPage: React.FC<SearchPageProps> = ({ onSongSelect, onPlaylistSelect,
               </Typography>
             </Box>
             <IconButton
-              size="small"
               onClick={clearRecentSearches}
-              sx={{
-                color: 'text.secondary',
-                '&:hover': {
-                  color: 'error.main',
-                },
-              }}
+              size="small"
+              sx={{ color: 'text.secondary' }}
+              title="Clear all recent searches"
             >
-              <DeleteOutlineIcon fontSize="small" />
+              <ClearAllIcon />
             </IconButton>
           </Box>
           <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
@@ -449,6 +445,7 @@ const SearchPage: React.FC<SearchPageProps> = ({ onSongSelect, onPlaylistSelect,
               borderBottom: 1,
               borderColor: 'divider',
               mb: 2,
+              px: 0,
               '& .MuiTab-root': {
                 textTransform: 'none',
                 fontWeight: 500,

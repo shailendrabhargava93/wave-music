@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Box, Typography, CircularProgress, IconButton, Skeleton, Menu, MenuItem, ListItemIcon, Fab } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import MoreVertIcon from '@mui/icons-material/MoreVert';
@@ -26,17 +26,16 @@ interface ChartSongWithSaavn extends SoundChartsItem {
 
 const AllSongsPage: React.FC<AllSongsPageProps> = ({ onSongSelect, chartSongs, onBack, onAddToQueue, onPlayNext }) => {
   const [displayedSongs, setDisplayedSongs] = useState<ChartSongWithSaavn[]>([]);
-  const [displayCount, setDisplayCount] = useState(20);
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [selectedSong, setSelectedSong] = useState<ChartSongWithSaavn | null>(null);
   const [favouriteSongs, setFavouriteSongs] = useState<string[]>([]);
   const [showScrollTop, setShowScrollTop] = useState(false);
-  const observerTarget = useRef<HTMLDivElement>(null);
 
-  // Scroll to top when component mounts
+  // Scroll to top when component mounts and load all songs
   useEffect(() => {
     window.scrollTo(0, 0);
-  }, []);
+    setDisplayedSongs(chartSongs);
+  }, [chartSongs]);
 
   // Load favourite songs
   useEffect(() => {
@@ -50,39 +49,6 @@ const AllSongsPage: React.FC<AllSongsPageProps> = ({ onSongSelect, chartSongs, o
       }
     }
   }, []);
-
-  // Update displayed songs when displayCount changes
-  useEffect(() => {
-    if (chartSongs.length > 0) {
-      setDisplayedSongs(chartSongs.slice(0, displayCount));
-    }
-  }, [chartSongs, displayCount]);
-
-  // Intersection Observer for infinite scroll - keep it stable
-  useEffect(() => {
-    const currentTarget = observerTarget.current;
-    if (!currentTarget || chartSongs.length === 0) return;
-
-    const observer = new IntersectionObserver(
-      entries => {
-        const entry = entries[0];
-        if (entry.isIntersecting) {
-          // Load more songs
-          setDisplayCount(prev => Math.min(prev + 20, chartSongs.length));
-        }
-      },
-      { 
-        threshold: 0.1,
-        rootMargin: '200px'
-      }
-    );
-
-    observer.observe(currentTarget);
-
-    return () => {
-      observer.disconnect();
-    };
-  }, [chartSongs.length]);
 
   // Scroll listener for scroll to top button
   useEffect(() => {
@@ -230,11 +196,7 @@ const AllSongsPage: React.FC<AllSongsPageProps> = ({ onSongSelect, chartSongs, o
         </Typography>
       </Box>
 
-      <Box sx={{ px: 2 }}>
-        <Typography variant="body2" sx={{ color: 'text.secondary', mb: 3 }}>
-          Top 100 Songs in India • Spotify Charts
-        </Typography>
-
+      <Box sx={{ px: 2, pb: 12 }}>
         {chartSongs.length === 0 && (
           <Box>
             {[...Array(20)].map((_, index) => (
@@ -372,40 +334,7 @@ const AllSongsPage: React.FC<AllSongsPageProps> = ({ onSongSelect, chartSongs, o
                 )}
               </Box>
             ))}
-            {/* Loading indicator and observer target */}
-            {displayCount < chartSongs.length && (
-              <Box
-                sx={{
-                  display: 'flex',
-                  flexDirection: 'column',
-                  justifyContent: 'center',
-                  alignItems: 'center',
-                  gap: 2,
-                  py: 4,
-                  minHeight: 100,
-                  width: '100%',
-                }}
-              >
-                <Box ref={observerTarget} sx={{ height: 20, width: '100%' }} />
-                <CircularProgress size={32} sx={{ color: 'primary.main' }} />
-              </Box>
-            )}
             
-            {/* All songs loaded message */}
-            {displayCount >= chartSongs.length && chartSongs.length > 0 && (
-              <Box
-                sx={{
-                  display: 'flex',
-                  justifyContent: 'center',
-                  py: 3,
-                  width: '100%',
-                }}
-              >
-                <Typography variant="body2" color="text.secondary">
-                  🎵 All {chartSongs.length} songs loaded!
-                </Typography>
-              </Box>
-            )}
           </Box>
         )}
       </Box>
@@ -464,14 +393,15 @@ const AllSongsPage: React.FC<AllSongsPageProps> = ({ onSongSelect, chartSongs, o
           color="primary"
           aria-label="scroll to top"
           onClick={scrollToTop}
+          size="small"
           sx={{
             position: 'fixed',
-            bottom: 80,
+            bottom: 140,
             right: 16,
-            zIndex: 1000,
+            zIndex: 999,
           }}
         >
-          <KeyboardArrowUpIcon sx={{ color: theme => theme.palette.mode === 'dark' ? '#fff' : '#000' }} />
+          <KeyboardArrowUpIcon sx={{ color: theme => theme.palette.mode === 'dark' ? '#fff' : '#000', fontSize: '1.2rem' }} />
         </Fab>
       )}
     </Box>

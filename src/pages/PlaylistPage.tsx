@@ -252,7 +252,7 @@ const PlaylistPage: React.FC<PlaylistPageProps> = ({
   };
 
   return (
-    <Box sx={{ pb: 10, minHeight: '100vh', pt: 1 }}>
+    <Box sx={{ pb: 14, minHeight: '100vh', pt: 1 }}>
       {/* Header with Back Button */}
       <Box
         sx={{
@@ -556,14 +556,15 @@ const PlaylistPage: React.FC<PlaylistPageProps> = ({
           color="primary"
           aria-label="scroll to top"
           onClick={scrollToTop}
+          size="small"
           sx={{
             position: 'fixed',
-            bottom: 80,
+            bottom: 140,
             right: 16,
-            zIndex: 1000,
+            zIndex: 999,
           }}
         >
-          <KeyboardArrowUpIcon sx={{ color: theme => theme.palette.mode === 'dark' ? '#fff' : '#000' }} />
+          <KeyboardArrowUpIcon sx={{ color: theme => theme.palette.mode === 'dark' ? '#fff' : '#000', fontSize: '1.2rem' }} />
         </Fab>
       )}
     </Box>

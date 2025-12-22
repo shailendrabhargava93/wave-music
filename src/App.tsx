@@ -44,10 +44,19 @@ function App() {
 
   const [activeTab, setActiveTab] = useState('home');
   const [fullPlayerOpen, setFullPlayerOpen] = useState(false);
-  const [currentSong, setCurrentSong] = useState<CurrentSong | null>(null);
-  const [isPlaying, setIsPlaying] = useState(false);
+  const [currentSong, setCurrentSong] = useState<CurrentSong | null>(() => {
+    const saved = localStorage.getItem('lastSong');
+    return saved ? JSON.parse(saved) : null;
+  });
+  const [isPlaying, setIsPlaying] = useState(() => {
+    const saved = localStorage.getItem('isPlaying');
+    return saved === 'true';
+  });
   const [isLoadingSong, setIsLoadingSong] = useState(false);
-  const [songProgress, setSongProgress] = useState(0);
+  const [songProgress, setSongProgress] = useState(() => {
+    const saved = localStorage.getItem('lastSongProgress');
+    return saved ? parseInt(saved) : 0;
+  });
   
   // Queue management
   const [songQueue, setSongQueue] = useState<Song[]>([]);
@@ -80,6 +89,19 @@ function App() {
   useEffect(() => {
     localStorage.setItem('theme', isDarkMode ? 'dark' : 'light');
   }, [isDarkMode]);
+
+  // Save current song and progress to localStorage
+  useEffect(() => {
+    if (currentSong) {
+      localStorage.setItem('lastSong', JSON.stringify(currentSong));
+      localStorage.setItem('lastSongProgress', songProgress.toString());
+    }
+  }, [currentSong, songProgress]);
+
+  // Save playing state to localStorage
+  useEffect(() => {
+    localStorage.setItem('isPlaying', isPlaying.toString());
+  }, [isPlaying]);
 
   // Save bottom nav text preference to localStorage
   useEffect(() => {
@@ -693,6 +715,10 @@ function App() {
             onSettingsClick={handleSettingsClick}
             onPlayNext={handlePlayNext}
             onAddToQueue={handleAddToQueue}
+            onShowSnackbar={(msg) => {
+              setSnackbarMessage(msg);
+              setSnackbarOpen(true);
+            }}
           />
         );
       case 'explore':

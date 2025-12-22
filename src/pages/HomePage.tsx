@@ -25,6 +25,7 @@ interface HomePageProps {
   onSettingsClick?: () => void;
   onAddToQueue?: (song: Song) => void;
   onPlayNext?: (song: Song) => void;
+  onShowSnackbar?: (message: string) => void;
 }
 
 interface ChartSongWithSaavn extends SoundChartsItem {
@@ -32,7 +33,7 @@ interface ChartSongWithSaavn extends SoundChartsItem {
   isSearching?: boolean;
 }
 
-const HomePage: React.FC<HomePageProps> = ({ onSongSelect, chartSongs, chartSongsLoading, onViewAllCharts, onAlbumSelect, onPlaylistSelect, onRecentlyPlayedClick, onSettingsClick, onAddToQueue, onPlayNext }) => {
+const HomePage: React.FC<HomePageProps> = ({ onSongSelect, chartSongs, chartSongsLoading, onViewAllCharts, onAlbumSelect, onPlaylistSelect, onRecentlyPlayedClick, onSettingsClick, onAddToQueue, onPlayNext, onShowSnackbar }) => {
   const [displayedSongs, setDisplayedSongs] = useState<ChartSongWithSaavn[]>([]);
   const [latestAlbums, setLatestAlbums] = useState<any[]>([]);
   const [albumsLoading, setAlbumsLoading] = useState(true);
@@ -197,6 +198,9 @@ const HomePage: React.FC<HomePageProps> = ({ onSongSelect, chartSongs, chartSong
       // Remove from favourites
       favourites = favourites.filter((song: any) => song.id !== selectedSong.saavnData!.id);
       setFavouriteSongs(prev => prev.filter(id => id !== selectedSong.saavnData!.id));
+      if (onShowSnackbar) {
+        onShowSnackbar('Removed from favourites');
+      }
     } else {
       // Add to favourites
       const newFavourite = {
@@ -210,6 +214,9 @@ const HomePage: React.FC<HomePageProps> = ({ onSongSelect, chartSongs, chartSong
       };
       favourites.push(newFavourite);
       setFavouriteSongs(prev => [...prev, selectedSong.saavnData!.id]);
+      if (onShowSnackbar) {
+        onShowSnackbar('Added to favourites ❤️');
+      }
     }
 
     localStorage.setItem('favouriteSongs', JSON.stringify(favourites));

@@ -6,6 +6,7 @@ import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import QueueMusicIcon from '@mui/icons-material/QueueMusic';
 import PlaylistAddIcon from '@mui/icons-material/PlaylistAdd';
 import FavoriteIcon from '@mui/icons-material/Favorite';
+import ClearAllIcon from '@mui/icons-material/ClearAll';
 import { Song } from '../types/api';
 
 interface RecentlyPlayedPageProps {
@@ -134,19 +135,14 @@ const RecentlyPlayedPage: React.FC<RecentlyPlayedPageProps> = ({ onBack, onSongS
             Recently Played
           </Typography>
           {recentSongs.length > 0 && (
-            <Typography
-              variant="body2"
+            <IconButton
               onClick={handleClearRecent}
-              sx={{
-                color: 'primary.main',
-                cursor: 'pointer',
-                '&:hover': {
-                  textDecoration: 'underline',
-                },
-              }}
+              size="small"
+              sx={{ color: 'text.secondary' }}
+              title="Clear all recently played songs"
             >
-              Clear All
-            </Typography>
+              <ClearAllIcon />
+            </IconButton>
           )}
         </Box>
       </Box>

@@ -226,6 +226,7 @@ const FavouritesPage: React.FC<FavouritesPageProps> = ({ onSongSelect }) => {
               borderBottom: 1,
               borderColor: 'divider',
               mb: 2,
+              px: 0,
               '& .MuiTab-root': {
                 textTransform: 'none',
                 fontWeight: 500,
@@ -297,11 +298,24 @@ const FavouritesPage: React.FC<FavouritesPageProps> = ({ onSongSelect }) => {
                       onClick={() => onSongSelect(song.id)}
                     >
                       <Avatar
-                        src={song.albumArt}
+                        src={song.albumArt || ''}
                         variant="rounded"
-                        sx={{ width: 56, height: 56 }}
+                        sx={{ 
+                          width: 56, 
+                          height: 56,
+                          bgcolor: song.albumArt ? 'transparent' : 'primary.main',
+                          fontSize: '1.5rem',
+                          border: '1px solid',
+                          borderColor: 'divider',
+                        }}
+                        imgProps={{
+                          loading: 'lazy',
+                          onError: (e) => {
+                            (e.target as HTMLImageElement).style.display = 'none';
+                          }
+                        }}
                       >
-                        <MusicNoteIcon />
+                        {!song.albumArt && <MusicNoteIcon />}
                       </Avatar>
                     </ListItemAvatar>
                     <ListItemText
@@ -406,11 +420,24 @@ const FavouritesPage: React.FC<FavouritesPageProps> = ({ onSongSelect }) => {
                   >
                     <ListItemAvatar sx={{ minWidth: 72 }}>
                       <Avatar
-                        src={album.image}
+                        src={album.image || ''}
                         variant="rounded"
-                        sx={{ width: 56, height: 56 }}
+                        sx={{ 
+                          width: 56, 
+                          height: 56,
+                          bgcolor: album.image ? 'transparent' : 'primary.main',
+                          fontSize: '1.5rem',
+                          border: '1px solid',
+                          borderColor: 'divider',
+                        }}
+                        imgProps={{
+                          loading: 'lazy',
+                          onError: (e) => {
+                            (e.target as HTMLImageElement).style.display = 'none';
+                          }
+                        }}
                       >
-                        <AlbumIcon />
+                        {!album.image && <AlbumIcon />}
                       </Avatar>
                     </ListItemAvatar>
                     <ListItemText
@@ -513,11 +540,24 @@ const FavouritesPage: React.FC<FavouritesPageProps> = ({ onSongSelect }) => {
                   >
                     <ListItemAvatar sx={{ minWidth: 72 }}>
                       <Avatar
-                        src={playlist.image}
+                        src={playlist.image || ''}
                         variant="rounded"
-                        sx={{ width: 56, height: 56 }}
+                        sx={{ 
+                          width: 56, 
+                          height: 56,
+                          bgcolor: playlist.image ? 'transparent' : 'primary.main',
+                          fontSize: '1.5rem',
+                          border: '1px solid',
+                          borderColor: 'divider',
+                        }}
+                        imgProps={{
+                          loading: 'lazy',
+                          onError: (e) => {
+                            (e.target as HTMLImageElement).style.display = 'none';
+                          }
+                        }}
                       >
-                        <PlaylistPlayIcon />
+                        {!playlist.image && <PlaylistPlayIcon />}
                       </Avatar>
                     </ListItemAvatar>
                     <ListItemText
