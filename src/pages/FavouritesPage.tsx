@@ -226,11 +226,13 @@ const FavouritesPage: React.FC<FavouritesPageProps> = ({ onSongSelect }) => {
             sx={{
               borderBottom: 1,
               borderColor: 'divider',
+              mb: 2,
               '& .MuiTab-root': {
                 textTransform: 'none',
                 fontWeight: 500,
                 fontSize: '0.95rem',
                 minWidth: 80,
+                minHeight: 48,
               },
               '& .Mui-selected': {
                 color: 'primary.main',

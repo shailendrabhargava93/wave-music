@@ -1,6 +1,6 @@
 import { SearchResponse } from '../types/api';
 
-const BASE_URL = 'https://saavn.sumit.co/api';
+const BASE_URL = 'https://saavn-api-client.vercel.app/api';
 
 export const saavnApi = {
   searchSongs: async (query: string, limit: number = 10): Promise<any> => {

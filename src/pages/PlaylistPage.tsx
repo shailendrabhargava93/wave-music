@@ -232,7 +232,7 @@ const PlaylistPage: React.FC<PlaylistPageProps> = ({
           display: 'flex',
           alignItems: 'center',
           gap: 1,
-          px: 2,
+          px: 1,
           mb: 1,
         }}
       >
@@ -258,7 +258,7 @@ const PlaylistPage: React.FC<PlaylistPageProps> = ({
           display: 'flex',
           flexDirection: 'column',
           alignItems: 'center',
-          px: 2,
+          px: 1,
           pb: 0.5,
           mb: 1,
           background: (theme) =>
@@ -363,7 +363,7 @@ const PlaylistPage: React.FC<PlaylistPageProps> = ({
             justifyContent: 'center',
             minHeight: '40vh',
             gap: 2,
-            px: 2,
+            px: 1,
           }}
         >
           <Typography variant="h6" sx={{ color: 'text.secondary' }}>
@@ -377,7 +377,7 @@ const PlaylistPage: React.FC<PlaylistPageProps> = ({
 
       {/* Songs List */}
       {!loading && !error && songs.length > 0 && (
-        <Box sx={{ px: 2 }}>
+        <Box sx={{ px: 1 }}>
           <List sx={{ bgcolor: 'transparent', p: 0 }}>
             {songs.map((song, index) => (
               <ListItem

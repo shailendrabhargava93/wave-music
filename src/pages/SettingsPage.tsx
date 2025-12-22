@@ -77,7 +77,7 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
       }}
     >
       <Container maxWidth="md">
-        <Box sx={{ display: 'flex', alignItems: 'center', mb: 2, px: 2, pt: 1, gap: 1 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', mb: 2, px: 0, pt: 0, gap: 1 }}>
           {onNavigateHome && (
             <IconButton onClick={onNavigateHome}>
               <ArrowBackIcon />

@@ -209,24 +209,18 @@ const ExplorePage: React.FC<ExplorePageProps> = ({ onPlaylistSelect }) => {
                 width: '100%',
                 height: 48,
                 fontSize: '0.95rem',
-                fontWeight: 500,
-                bgcolor: (theme) => 
-                  theme.palette.mode === 'light' 
-                    ? 'rgba(0, 0, 0, 0.04)' 
-                    : 'rgba(255, 255, 255, 0.05)',
-                color: 'text.primary',
-                borderLeft: `4px solid ${mood.color}`,
-                borderRadius: 1,
+                fontWeight: 600,
+                bgcolor: (theme) => theme.palette.mode === 'light' ? '#FFFFFF' : 'rgba(0, 0, 0, 0.3)',
+                color: mood.color,
+                border: (theme) => `1px solid ${theme.palette.mode === 'light' ? mood.color : mood.color}`,
+                borderRadius: 2,
                 justifyContent: 'flex-start',
-                border: (theme) => 
-                  theme.palette.mode === 'light' 
-                    ? '1px solid rgba(0, 0, 0, 0.08)' 
-                    : 'none',
+                transition: 'all 0.2s ease-in-out',
                 '&:hover': {
-                  bgcolor: (theme) => 
-                    theme.palette.mode === 'light' 
-                      ? 'rgba(0, 0, 0, 0.08)' 
-                      : 'rgba(255, 255, 255, 0.1)',
+                  bgcolor: mood.color,
+                  color: '#FFFFFF',
+                  boxShadow: `0 4px 12px rgba(0, 0, 0, 0.15)`,
+                  transform: 'translateY(-2px)',
                 },
                 '& .MuiChip-label': {
                   px: 2,
@@ -251,24 +245,18 @@ const ExplorePage: React.FC<ExplorePageProps> = ({ onPlaylistSelect }) => {
                 width: '100%',
                 height: 48,
                 fontSize: '0.95rem',
-                fontWeight: 500,
-                bgcolor: (theme) => 
-                  theme.palette.mode === 'light' 
-                    ? 'rgba(0, 0, 0, 0.04)' 
-                    : 'rgba(255, 255, 255, 0.05)',
-                color: 'text.primary',
-                borderLeft: `4px solid ${genre.color}`,
-                borderRadius: 1,
+                fontWeight: 600,
+                bgcolor: (theme) => theme.palette.mode === 'light' ? '#FFFFFF' : 'rgba(0, 0, 0, 0.3)',
+                color: genre.color,
+                border: (theme) => `1px solid ${theme.palette.mode === 'light' ? genre.color : genre.color}`,
+                borderRadius: 2,
                 justifyContent: 'flex-start',
-                border: (theme) => 
-                  theme.palette.mode === 'light' 
-                    ? '1px solid rgba(0, 0, 0, 0.08)' 
-                    : 'none',
+                transition: 'all 0.2s ease-in-out',
                 '&:hover': {
-                  bgcolor: (theme) => 
-                    theme.palette.mode === 'light' 
-                      ? 'rgba(0, 0, 0, 0.08)' 
-                      : 'rgba(255, 255, 255, 0.1)',
+                  bgcolor: genre.color,
+                  color: '#FFFFFF',
+                  boxShadow: `0 4px 12px rgba(0, 0, 0, 0.15)`,
+                  transform: 'translateY(-2px)',
                 },
                 '& .MuiChip-label': {
                   px: 2,

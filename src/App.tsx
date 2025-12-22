@@ -671,7 +671,7 @@ function App() {
             maxWidth="sm" 
             sx={{ 
               px: { xs: 0, sm: 2 },
-              pt: 3
+              pt: 1
             }}
           >
             {renderContent()}
