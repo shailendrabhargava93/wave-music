@@ -26,6 +26,7 @@ import LabelOffIcon from '@mui/icons-material/LabelOff';
 import HighQualityIcon from '@mui/icons-material/HighQuality';
 import CloseIcon from '@mui/icons-material/Close';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
+import { setMeta } from '../services/storage';
 
 interface SettingsPageProps {
   isDarkMode: boolean;
@@ -53,6 +54,7 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
   const handleStreamQualityChange = (newQuality: string) => {
     setStreamQuality(newQuality);
     localStorage.setItem('streamQuality', newQuality);
+    setMeta('streamQuality', newQuality);
     setSnackbarMessage(`Stream quality set to ${newQuality}kbps`);
     setSnackbarOpen(true);
     setQualityDrawerOpen(false);

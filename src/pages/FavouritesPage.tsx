@@ -21,6 +21,13 @@ import AlbumIcon from '@mui/icons-material/Album';
 import PlaylistPlayIcon from '@mui/icons-material/PlaylistPlay';
 import MoreVertIcon from '@mui/icons-material/MoreVert';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
+import {
+  FAVOURITE_ALBUMS_KEY,
+  FAVOURITE_PLAYLISTS_KEY,
+  FAVOURITE_SONGS_KEY,
+  persistFavourites,
+  readFavourites,
+} from '../services/storage';
 
 interface FavouriteSong {
   id: string;
@@ -58,77 +65,77 @@ const FavouritesPage: React.FC<FavouritesPageProps> = ({ onSongSelect }) => {
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [selectedItem, setSelectedItem] = useState<any>(null);
 
-  // Load favourites from localStorage
+  // Load favourites from IndexedDB
   useEffect(() => {
     loadFavourites();
     loadFavouriteAlbums();
     loadFavouritePlaylists();
   }, []);
 
-  const loadFavourites = () => {
-    const saved = localStorage.getItem('favouriteSongs');
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        // Sort by addedAt date (most recent first)
-        const sorted = parsed.sort((a: FavouriteSong, b: FavouriteSong) => {
-          return (b.addedAt || 0) - (a.addedAt || 0);
-        });
-        setFavourites(sorted);
-      } catch (e) {
-        setFavourites([]);
-      }
+  const loadFavourites = async () => {
+    const saved = await readFavourites(FAVOURITE_SONGS_KEY);
+    try {
+      const sorted = [...saved].sort((a: FavouriteSong, b: FavouriteSong) => {
+        return (b.addedAt || 0) - (a.addedAt || 0);
+      });
+      setFavourites(sorted);
+    } catch (error) {
+      setFavourites([]);
     }
   };
 
-  const loadFavouriteAlbums = () => {
-    const saved = localStorage.getItem('favouriteAlbums');
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        // Sort by addedAt date (most recent first)
-        const sorted = parsed.sort((a: FavouriteAlbum, b: FavouriteAlbum) => {
-          return (b.addedAt || 0) - (a.addedAt || 0);
-        });
-        setFavouriteAlbums(sorted);
-      } catch (e) {
-        setFavouriteAlbums([]);
-      }
+  const loadFavouriteAlbums = async () => {
+    const saved = await readFavourites(FAVOURITE_ALBUMS_KEY);
+    try {
+      const sorted = [...saved].sort((a: FavouriteAlbum, b: FavouriteAlbum) => {
+        return (b.addedAt || 0) - (a.addedAt || 0);
+      });
+      setFavouriteAlbums(sorted);
+    } catch (error) {
+      setFavouriteAlbums([]);
     }
   };
 
-  const loadFavouritePlaylists = () => {
-    const saved = localStorage.getItem('favouritePlaylists');
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        // Sort by addedAt date (most recent first)
-        const sorted = parsed.sort((a: FavouritePlaylist, b: FavouritePlaylist) => {
-          return (b.addedAt || 0) - (a.addedAt || 0);
-        });
-        setFavouritePlaylists(sorted);
-      } catch (e) {
-        setFavouritePlaylists([]);
-      }
+  const loadFavouritePlaylists = async () => {
+    const saved = await readFavourites(FAVOURITE_PLAYLISTS_KEY);
+    try {
+      const sorted = [...saved].sort((a: FavouritePlaylist, b: FavouritePlaylist) => {
+        return (b.addedAt || 0) - (a.addedAt || 0);
+      });
+      setFavouritePlaylists(sorted);
+    } catch (error) {
+      setFavouritePlaylists([]);
     }
   };
 
-  const removeFavourite = (songId: string) => {
+  const removeFavourite = async (songId: string) => {
     const updated = favourites.filter(song => song.id !== songId);
     setFavourites(updated);
-    localStorage.setItem('favouriteSongs', JSON.stringify(updated));
+    try {
+      await persistFavourites(FAVOURITE_SONGS_KEY, updated);
+    } catch (error) {
+      console.warn('Failed to persist favourite songs', error);
+    }
   };
 
-  const removeFavouriteAlbum = (albumId: string) => {
+  const removeFavouriteAlbum = async (albumId: string) => {
     const updated = favouriteAlbums.filter(album => album.id !== albumId);
     setFavouriteAlbums(updated);
-    localStorage.setItem('favouriteAlbums', JSON.stringify(updated));
+    try {
+      await persistFavourites(FAVOURITE_ALBUMS_KEY, updated);
+    } catch (error) {
+      console.warn('Failed to persist favourite albums', error);
+    }
   };
 
-  const removeFavouritePlaylist = (playlistId: string) => {
+  const removeFavouritePlaylist = async (playlistId: string) => {
     const updated = favouritePlaylists.filter(playlist => playlist.id !== playlistId);
     setFavouritePlaylists(updated);
-    localStorage.setItem('favouritePlaylists', JSON.stringify(updated));
+    try {
+      await persistFavourites(FAVOURITE_PLAYLISTS_KEY, updated);
+    } catch (error) {
+      console.warn('Failed to persist favourite playlists', error);
+    }
   };
 
   const handleMenuOpen = (event: React.MouseEvent<HTMLElement>, item: any) => {
@@ -142,14 +149,14 @@ const FavouritesPage: React.FC<FavouritesPageProps> = ({ onSongSelect }) => {
     setSelectedItem(null);
   };
 
-  const handleRemove = () => {
+  const handleRemove = async () => {
     if (selectedItem) {
       if (activeTab === 0) {
-        removeFavourite(selectedItem.id);
+        await removeFavourite(selectedItem.id);
       } else if (activeTab === 1) {
-        removeFavouriteAlbum(selectedItem.id);
+        await removeFavouriteAlbum(selectedItem.id);
       } else if (activeTab === 2) {
-        removeFavouritePlaylist(selectedItem.id);
+        await removeFavouritePlaylist(selectedItem.id);
       }
     }
     handleMenuClose();
@@ -228,12 +235,17 @@ const FavouritesPage: React.FC<FavouritesPageProps> = ({ onSongSelect }) => {
               borderColor: 'divider',
               mb: 2,
               px: 0,
+              '& .MuiTabs-flexContainer': {
+                justifyContent: 'space-between',
+                width: '100%',
+              },
               '& .MuiTab-root': {
                 textTransform: 'none',
                 fontWeight: 500,
                 fontSize: '0.95rem',
-                minWidth: 80,
-                minHeight: 48,
+                minWidth: 70,
+                minHeight: 42,
+                px: 0.8,
               },
               '& .Mui-selected': {
                 color: 'primary.main',

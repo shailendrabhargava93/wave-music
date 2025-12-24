@@ -25,6 +25,7 @@ import QueueMusicIcon from '@mui/icons-material/QueueMusic';
 import UpNextDrawer from './UpNextDrawer';
 import { saavnApi } from '../services/saavnApi';
 import { Song } from '../types/api';
+import { FAVOURITE_SONGS_KEY, persistFavourites, readFavourites } from '../services/storage';
 
 interface FullPlayerProps {
   open: boolean;
@@ -100,17 +101,18 @@ const FullPlayer: React.FC<FullPlayerProps> = ({
   useEffect(() => {
     if (!songId) return;
     
-    const saved = localStorage.getItem('favouriteSongs');
-    if (saved) {
+    const checkFavourites = async () => {
       try {
-        const favourites = JSON.parse(saved);
+        const favourites = await readFavourites(FAVOURITE_SONGS_KEY);
         const isFav = favourites.some((song: any) => song.id === songId);
         setIsFavorite(isFav);
-      } catch (e) {
-        // Error checking favourites
+      } catch (error) {
+        console.warn('Unable to load favourite songs', error);
       }
-    }
-  }, [songId, songTitle]);
+    };
+
+    checkFavourites();
+  }, [songId]);
 
   // Fetch album songs when song changes (for Up Next)
   useEffect(() => {
@@ -146,22 +148,23 @@ const FullPlayer: React.FC<FullPlayerProps> = ({
   }, [albumId, songId]);
 
   // Toggle favourite status
-  const toggleFavorite = () => {
+  const toggleFavorite = async () => {
     if (!songId) return;
 
-    const saved = localStorage.getItem('favouriteSongs');
-    let favourites = saved ? JSON.parse(saved) : [];
-
+    const favourites = await readFavourites(FAVOURITE_SONGS_KEY);
     const existingIndex = favourites.findIndex((song: any) => song.id === songId);
 
     if (existingIndex >= 0) {
-      // Remove from favourites
-      favourites.splice(existingIndex, 1);
+      const updated = favourites.filter((song: any) => song.id !== songId);
       setIsFavorite(false);
       setSnackbarMessage('Removed from favourites');
       setSnackbarOpen(true);
+      try {
+        await persistFavourites(FAVOURITE_SONGS_KEY, updated);
+      } catch (error) {
+        console.warn('Unable to persist favourite songs', error);
+      }
     } else {
-      // Add to favourites
       const newFavourite = {
         id: songId,
         name: songTitle,
@@ -169,13 +172,16 @@ const FullPlayer: React.FC<FullPlayerProps> = ({
         albumArt: albumArt || '',
         addedAt: Date.now(),
       };
-      favourites.unshift(newFavourite); // Add to beginning
+      const updated = [newFavourite, ...favourites];
       setIsFavorite(true);
       setSnackbarMessage('Added to favourites ❤️');
       setSnackbarOpen(true);
+      try {
+        await persistFavourites(FAVOURITE_SONGS_KEY, updated);
+      } catch (error) {
+        console.warn('Unable to persist favourite songs', error);
+      }
     }
-
-    localStorage.setItem('favouriteSongs', JSON.stringify(favourites));
   };
 
   const formatTime = (seconds: number) => {

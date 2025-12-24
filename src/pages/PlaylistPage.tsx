@@ -22,6 +22,13 @@ import MoreVertIcon from '@mui/icons-material/MoreVert';
 import QueueMusicIcon from '@mui/icons-material/QueueMusic';
 import PlaylistAddIcon from '@mui/icons-material/PlaylistAdd';
 import { saavnApi } from '../services/saavnApi';
+import {
+  FAVOURITE_ALBUMS_KEY,
+  FAVOURITE_PLAYLISTS_KEY,
+  FAVOURITE_SONGS_KEY,
+  persistFavourites,
+  readFavourites,
+} from '../services/storage';
 
 interface PlaylistPageProps {
   playlistId: string;
@@ -55,49 +62,53 @@ const PlaylistPage: React.FC<PlaylistPageProps> = ({
 
   // Check if playlist/album is in favourites
   useEffect(() => {
-    const storageKey = type === 'album' ? 'favouriteAlbums' : 'favouritePlaylists';
-    const saved = localStorage.getItem(storageKey);
-    if (saved) {
+    const storageKey = type === 'album' ? FAVOURITE_ALBUMS_KEY : FAVOURITE_PLAYLISTS_KEY;
+    const loadFavourites = async () => {
       try {
-        const favourites = JSON.parse(saved);
+        const favourites = await readFavourites(storageKey);
         const exists = favourites.some((item: any) => item.id === playlistId);
         setIsFavourite(exists);
-      } catch (e) {
-        // Error checking favourites
+      } catch (error) {
+        console.warn('Unable to load favourites for playlist', error);
       }
-    }
+    };
+
+    loadFavourites();
   }, [playlistId, type]);
 
-  const toggleFavourite = () => {
-    const storageKey = type === 'album' ? 'favouriteAlbums' : 'favouritePlaylists';
-    const saved = localStorage.getItem(storageKey);
-    let favourites = [];
-    
+  const toggleFavourite = async () => {
+    const storageKey = type === 'album' ? FAVOURITE_ALBUMS_KEY : FAVOURITE_PLAYLISTS_KEY;
     try {
-      favourites = saved ? JSON.parse(saved) : [];
-    } catch (e) {
-      favourites = [];
-    }
+      const favourites = await readFavourites(storageKey);
 
-    if (isFavourite) {
-      // Remove from favourites
-      favourites = favourites.filter((item: any) => item.id !== playlistId);
-      setIsFavourite(false);
-    } else {
-      // Add to favourites
-      const newFavourite = {
-        id: playlistId,
-        name: playlistName,
-        image: playlistImage,
-        artist: type === 'album' ? 'Various Artists' : '',
-        description: type === 'playlist' ? playlistName : '',
-        addedAt: Date.now(),
-      };
-      favourites.push(newFavourite);
-      setIsFavourite(true);
+      if (isFavourite) {
+        const updated = favourites.filter((item: any) => item.id !== playlistId);
+        setIsFavourite(false);
+        try {
+          await persistFavourites(storageKey, updated);
+        } catch (error) {
+          console.warn('Unable to persist favorite playlist/album', error);
+        }
+      } else {
+        const newFavourite = {
+          id: playlistId,
+          name: playlistName,
+          image: playlistImage,
+          artist: type === 'album' ? 'Various Artists' : '',
+          description: type === 'playlist' ? playlistName : '',
+          addedAt: Date.now(),
+        };
+        const updated = [...favourites, newFavourite];
+        setIsFavourite(true);
+        try {
+          await persistFavourites(storageKey, updated);
+        } catch (error) {
+          console.warn('Unable to persist favorite playlist/album', error);
+        }
+      }
+    } catch (error) {
+      console.warn('Unable to read favourites for playlist', error);
     }
-
-    localStorage.setItem(storageKey, JSON.stringify(favourites));
   };
 
   const handleMenuOpen = (event: React.MouseEvent<HTMLElement>, song: any) => {
@@ -125,32 +136,28 @@ const PlaylistPage: React.FC<PlaylistPageProps> = ({
     handleMenuClose();
   };
 
-  const handleAddToFavourites = () => {
+  const handleAddToFavourites = async () => {
     if (selectedSong) {
-      const saved = localStorage.getItem('favouriteSongs');
-      let favourites = [];
-      
       try {
-        favourites = saved ? JSON.parse(saved) : [];
-      } catch (e) {
-        favourites = [];
-      }
+        const favourites = await readFavourites(FAVOURITE_SONGS_KEY);
+        const exists = favourites.some((song: any) => song.id === selectedSong.id);
 
-      const exists = favourites.some((song: any) => song.id === selectedSong.id);
-      
-      if (!exists) {
-        const newFavourite = {
-          id: selectedSong.id,
-          name: selectedSong.name,
-          artist: getArtistNames(selectedSong),
-          albumArt: getHighQualityImage(selectedSong.image),
-          addedAt: Date.now(),
-        };
-        favourites.push(newFavourite);
-        localStorage.setItem('favouriteSongs', JSON.stringify(favourites));
-        if (onShowSnackbar) {
-          onShowSnackbar('Added to favourites ❤️');
+        if (!exists) {
+          const newFavourite = {
+            id: selectedSong.id,
+            name: selectedSong.name,
+            artist: getArtistNames(selectedSong),
+            albumArt: getHighQualityImage(selectedSong.image),
+            addedAt: Date.now(),
+          };
+          const updated = [...favourites, newFavourite];
+          await persistFavourites(FAVOURITE_SONGS_KEY, updated);
+          if (onShowSnackbar) {
+            onShowSnackbar('Added to favourites ❤️');
+          }
         }
+      } catch (error) {
+        console.warn('Unable to update favourite songs', error);
       }
     }
     handleMenuClose();

@@ -32,6 +32,7 @@ import PlaylistAddIcon from '@mui/icons-material/PlaylistAdd';
 import FavoriteIcon from '@mui/icons-material/Favorite';
 import { saavnApi } from '../services/saavnApi';
 import { Song } from '../types/api';
+import { FAVOURITE_SONGS_KEY, persistFavourites, readFavourites } from '../services/storage';
 
 interface SearchPageProps {
   onSongSelect: (song: Song) => void;
@@ -153,9 +154,9 @@ const SearchPage: React.FC<SearchPageProps> = ({ onSongSelect, onPlaylistSelect,
     try {
       // Call all three APIs in parallel
       const [songsResponse, playlistsResponse, albumsResponse] = await Promise.all([
-        saavnApi.searchSongs(query, 10),
-        saavnApi.searchPlaylists(query, 10),
-        saavnApi.searchAlbums(query, 10)
+        saavnApi.searchSongs(query, 20),
+        saavnApi.searchPlaylists(query, 20),
+        saavnApi.searchAlbums(query, 20)
       ]);
       
       // Extract songs from response
@@ -167,7 +168,7 @@ const SearchPage: React.FC<SearchPageProps> = ({ onSongSelect, onPlaylistSelect,
                song.name && 
                song.image && 
                song.image.length > 0;
-      }).slice(0, 10);
+      }).slice(0, 20);
       
       // Extract playlists from response
       const playlistsData = playlistsResponse.data?.results || [];
@@ -178,7 +179,7 @@ const SearchPage: React.FC<SearchPageProps> = ({ onSongSelect, onPlaylistSelect,
                playlist.name && 
                playlist.image && 
                playlist.image.length > 0;
-      }).slice(0, 10);
+      }).slice(0, 20);
       
       // Extract albums from response
       const albumsData = albumsResponse.data?.results || [];
@@ -189,7 +190,7 @@ const SearchPage: React.FC<SearchPageProps> = ({ onSongSelect, onPlaylistSelect,
                album.name && 
                album.image && 
                album.image.length > 0;
-      }).slice(0, 10);
+      }).slice(0, 20);
       
       setSongs(validSongs);
       setPlaylists(validPlaylists);
@@ -289,24 +290,28 @@ const SearchPage: React.FC<SearchPageProps> = ({ onSongSelect, onPlaylistSelect,
     handleMenuClose();
   };
 
-  const handleAddToFavourites = () => {
+  const handleAddToFavourites = async () => {
     if (selectedSong) {
-      const favourites = JSON.parse(localStorage.getItem('favouriteSongs') || '[]');
-      const exists = favourites.some((fav: any) => fav.id === selectedSong.id);
-      
-      if (!exists) {
-        const newFav = {
-          id: selectedSong.id,
-          name: selectedSong.name,
-          artist: getArtistNames(selectedSong),
-          albumArt: getHighQualityImage(selectedSong.image),
-          addedAt: Date.now(),
-        };
-        favourites.push(newFav);
-        localStorage.setItem('favouriteSongs', JSON.stringify(favourites));
-        if (onShowSnackbar) {
-          onShowSnackbar('Added to favourites ❤️');
+      try {
+        const favourites = await readFavourites(FAVOURITE_SONGS_KEY);
+        const exists = favourites.some((fav: any) => fav.id === selectedSong.id);
+        
+        if (!exists) {
+          const newFav = {
+            id: selectedSong.id,
+            name: selectedSong.name,
+            artist: getArtistNames(selectedSong),
+            albumArt: getHighQualityImage(selectedSong.image),
+            addedAt: Date.now(),
+          };
+          const updated = [...favourites, newFav];
+          await persistFavourites(FAVOURITE_SONGS_KEY, updated);
+          if (onShowSnackbar) {
+            onShowSnackbar('Added to favourites ❤️');
+          }
         }
+      } catch (error) {
+        console.warn('Unable to update favourite songs', error);
       }
     }
     handleMenuClose();
@@ -446,12 +451,17 @@ const SearchPage: React.FC<SearchPageProps> = ({ onSongSelect, onPlaylistSelect,
               borderColor: 'divider',
               mb: 2,
               px: 0,
+              '& .MuiTabs-flexContainer': {
+                justifyContent: 'space-between',
+                width: '100%',
+              },
               '& .MuiTab-root': {
                 textTransform: 'none',
                 fontWeight: 500,
                 fontSize: '0.9rem',
-                minWidth: 80,
-                minHeight: 48,
+                minWidth: 70,
+                minHeight: 42,
+                px: 0.7,
               },
               '& .Mui-selected': {
                 color: 'primary.main',

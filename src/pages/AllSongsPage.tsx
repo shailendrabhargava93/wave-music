@@ -9,6 +9,7 @@ import FavoriteBorderIcon from '@mui/icons-material/FavoriteBorder';
 import FavoriteIcon from '@mui/icons-material/Favorite';
 import { Song } from '../types/api';
 import { SoundChartsItem } from '../services/soundChartsApi';
+import { FAVOURITE_SONGS_KEY, persistFavourites, readFavourites } from '../services/storage';
 
 interface AllSongsPageProps {
   onSongSelect: (song: Song) => void;
@@ -37,15 +38,12 @@ const AllSongsPage: React.FC<AllSongsPageProps> = ({ onSongSelect, chartSongs, o
 
   // Load favourite songs
   useEffect(() => {
-    const saved = localStorage.getItem('favouriteSongs');
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        setFavouriteSongs(parsed.map((song: any) => song.id));
-      } catch (e) {
-        setFavouriteSongs([]);
-      }
-    }
+    const loadFavouriteIds = async () => {
+      const saved = await readFavourites(FAVOURITE_SONGS_KEY);
+      setFavouriteSongs(saved.map((song: any) => song.id));
+    };
+
+    loadFavouriteIds();
   }, []);
 
   const handleSongClick = (song: ChartSongWithSaavn) => {
@@ -79,40 +77,39 @@ const AllSongsPage: React.FC<AllSongsPageProps> = ({ onSongSelect, chartSongs, o
     handleMenuClose();
   };
 
-  const handleAddToFavourites = () => {
+  const handleAddToFavourites = async () => {
     if (!selectedSong?.saavnData) return;
 
-    const saved = localStorage.getItem('favouriteSongs');
-    let favourites = [];
-    
-    try {
-      favourites = saved ? JSON.parse(saved) : [];
-    } catch (e) {
-      favourites = [];
-    }
-
+    const favourites = await readFavourites(FAVOURITE_SONGS_KEY);
     const isFavourite = favourites.some((song: any) => song.id === selectedSong.saavnData!.id);
 
     if (isFavourite) {
-      // Remove from favourites
-      favourites = favourites.filter((song: any) => song.id !== selectedSong.saavnData!.id);
+      const updated = favourites.filter((song: any) => song.id !== selectedSong.saavnData!.id);
       setFavouriteSongs(prev => prev.filter(id => id !== selectedSong.saavnData!.id));
+      try {
+        await persistFavourites(FAVOURITE_SONGS_KEY, updated);
+      } catch (error) {
+        console.warn('Unable to persist favourite songs', error);
+      }
     } else {
-      // Add to favourites
       const newFavourite = {
         id: selectedSong.saavnData.id,
         name: selectedSong.saavnData.name,
         artist: selectedSong.saavnData.primaryArtists,
-        albumArt: selectedSong.saavnData.image && selectedSong.saavnData.image.length > 0 
+        albumArt: selectedSong.saavnData.image && selectedSong.saavnData.image.length > 0
           ? selectedSong.saavnData.image[0].link || ''
           : '',
         addedAt: Date.now(),
       };
-      favourites.push(newFavourite);
+      const updated = [...favourites, newFavourite];
       setFavouriteSongs(prev => [...prev, selectedSong.saavnData!.id]);
+      try {
+        await persistFavourites(FAVOURITE_SONGS_KEY, updated);
+      } catch (error) {
+        console.warn('Unable to persist favourite songs', error);
+      }
     }
 
-    localStorage.setItem('favouriteSongs', JSON.stringify(favourites));
     handleMenuClose();
   };
 

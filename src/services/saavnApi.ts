@@ -3,7 +3,7 @@ import { SearchResponse } from '../types/api';
 const BASE_URL = 'https://saavn-api-client.vercel.app/api';
 
 export const saavnApi = {
-  searchSongs: async (query: string, limit: number = 10): Promise<any> => {
+  searchSongs: async (query: string, limit: number = 20): Promise<any> => {
     try {
       const response = await fetch(`${BASE_URL}/search/songs?query=${encodeURIComponent(query)}&page=0&limit=${limit}`);
       if (!response.ok) {
@@ -17,7 +17,7 @@ export const saavnApi = {
     }
   },
 
-  searchPlaylists: async (query: string, limit: number = 10): Promise<any> => {
+  searchPlaylists: async (query: string, limit: number = 20): Promise<any> => {
     try {
       const response = await fetch(`${BASE_URL}/search/playlists?query=${encodeURIComponent(query)}&page=0&limit=${limit}`);
       if (!response.ok) {
@@ -130,7 +130,7 @@ export const saavnApi = {
     }
   },
 
-  searchAlbums: async (query: string, limit: number = 10): Promise<any> => {
+  searchAlbums: async (query: string, limit: number = 20): Promise<any> => {
     try {
       const response = await fetch(`${BASE_URL}/search/albums?query=${encodeURIComponent(query)}&page=0&limit=${limit}`);
       if (!response.ok) {
