@@ -8,10 +8,11 @@ import PlaylistAddIcon from '@mui/icons-material/PlaylistAdd';
 import FavoriteIcon from '@mui/icons-material/Favorite';
 import ClearAllIcon from '@mui/icons-material/ClearAll';
 import { Song } from '../types/api';
+import { FAVOURITE_SONGS_KEY, getMeta, persistFavourites, readFavourites, setMeta } from '../services/storage';
 
 interface RecentlyPlayedPageProps {
   onBack: () => void;
-  onSongSelect: (song: Song) => void;
+  onSongSelect: (song: Song, contextSongs?: Song[]) => void;
   onAddToQueue?: (song: Song) => void;
   onPlayNext?: (song: Song) => void;
   onShowSnackbar?: (message: string) => void;
@@ -23,16 +24,14 @@ const RecentlyPlayedPage: React.FC<RecentlyPlayedPageProps> = ({ onBack, onSongS
   const [selectedSong, setSelectedSong] = useState<Song | null>(null);
 
   useEffect(() => {
-    // Load recently played songs from localStorage
-    const loadRecentSongs = () => {
-      const stored = localStorage.getItem('recentlyPlayed');
-      if (stored) {
-        try {
-          const parsed = JSON.parse(stored);
-          setRecentSongs(parsed);
-        } catch (error) {
-          // Error parsing recent songs
+    const loadRecentSongs = async () => {
+      try {
+        const stored = (await getMeta('recentlyPlayed')) as Song[] | undefined;
+        if (stored && Array.isArray(stored)) {
+          setRecentSongs(stored);
         }
+      } catch (error) {
+        console.warn('Unable to load recently played', error);
       }
     };
 
@@ -71,31 +70,39 @@ const RecentlyPlayedPage: React.FC<RecentlyPlayedPageProps> = ({ onBack, onSongS
     handleMenuClose();
   };
 
-  const handleAddToFavourites = () => {
+  const handleAddToFavourites = async () => {
     if (selectedSong) {
-      const favourites = JSON.parse(localStorage.getItem('favouriteSongs') || '[]');
-      const exists = favourites.some((fav: any) => fav.id === selectedSong.id);
-      
-      if (!exists) {
-        const newFav = {
-          id: selectedSong.id,
-          name: selectedSong.name,
-          artist: selectedSong.primaryArtists || 'Unknown Artist',
-          albumArt: getImageUrl(selectedSong.image),
-          addedAt: Date.now(),
-        };
-        favourites.push(newFav);
-        localStorage.setItem('favouriteSongs', JSON.stringify(favourites));
-        if (onShowSnackbar) {
-          onShowSnackbar('Added to favourites ❤️');
+      try {
+        const favourites = await readFavourites(FAVOURITE_SONGS_KEY);
+        const exists = favourites.some((fav: any) => fav.id === selectedSong.id);
+        
+        if (!exists) {
+          const newFav = {
+            id: selectedSong.id,
+            name: selectedSong.name,
+            artist: selectedSong.primaryArtists || 'Unknown Artist',
+            albumArt: getImageUrl(selectedSong.image),
+            addedAt: Date.now(),
+          };
+          const updated = [...favourites, newFav];
+          await persistFavourites(FAVOURITE_SONGS_KEY, updated);
+          if (onShowSnackbar) {
+            onShowSnackbar('Added to favourites ❤️');
+          }
         }
+      } catch (error) {
+        console.warn('Unable to update favourite songs', error);
       }
     }
     handleMenuClose();
   };
 
-  const handleClearRecent = () => {
-    localStorage.removeItem('recentlyPlayed');
+  const handleClearRecent = async () => {
+    try {
+      await setMeta('recentlyPlayed', []);
+    } catch (error) {
+      console.warn('Unable to clear recent songs', error);
+    }
     setRecentSongs([]);
   };
 
@@ -181,7 +188,7 @@ const RecentlyPlayedPage: React.FC<RecentlyPlayedPageProps> = ({ onBack, onSongS
           {recentSongs.map((song) => (
             <ListItem
               key={song.id}
-              onClick={() => onSongSelect(song)}
+              onClick={() => onSongSelect(song, recentSongs)}
               sx={{
                 borderRadius: 1,
                 mb: 0.5,

@@ -91,6 +91,7 @@ export interface CurrentSong {
   albumArt: string;
   duration: number;
   downloadUrl?: string;
+  remoteDownloadUrl?: string;
   // Additional details for info popup
   albumId?: string;
   albumName?: string;

@@ -19,8 +19,17 @@ import FavoriteIcon from '@mui/icons-material/Favorite';
 import DeleteIcon from '@mui/icons-material/Delete';
 import AlbumIcon from '@mui/icons-material/Album';
 import PlaylistPlayIcon from '@mui/icons-material/PlaylistPlay';
+import PersonIcon from '@mui/icons-material/Person';
 import MoreVertIcon from '@mui/icons-material/MoreVert';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
+import {
+  FAVOURITE_ALBUMS_KEY,
+  FAVOURITE_PLAYLISTS_KEY,
+  FAVOURITE_SONGS_KEY,
+  FAVOURITE_ARTISTS_KEY,
+  persistFavourites,
+  readFavourites,
+} from '../services/storage';
 
 interface FavouriteSong {
   id: string;
@@ -46,89 +55,123 @@ interface FavouritePlaylist {
   addedAt: number;
 }
 
-interface FavouritesPageProps {
-  onSongSelect: (songId: string) => void;
+interface FavouriteArtist {
+  id: string;
+  name: string;
+  image: string;
+  addedAt: number;
 }
 
-const FavouritesPage: React.FC<FavouritesPageProps> = ({ onSongSelect }) => {
+interface FavouritesPageProps {
+  onSongSelect: (songId: string) => void;
+  onAlbumSelect?: (albumId: string, albumName: string, albumImage: string) => void;
+  onPlaylistSelect?: (playlistId: string, playlistName: string, playlistImage: string) => void;
+  onArtistSelect?: (artistId: string, artistName: string, artistImage: string) => void;
+}
+
+const FavouritesPage: React.FC<FavouritesPageProps> = ({ onSongSelect, onAlbumSelect, onPlaylistSelect, onArtistSelect }) => {
   const [activeTab, setActiveTab] = useState(0);
   const [favourites, setFavourites] = useState<FavouriteSong[]>([]);
   const [favouriteAlbums, setFavouriteAlbums] = useState<FavouriteAlbum[]>([]);
   const [favouritePlaylists, setFavouritePlaylists] = useState<FavouritePlaylist[]>([]);
+  const [favouriteArtists, setFavouriteArtists] = useState<FavouriteArtist[]>([]);
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [selectedItem, setSelectedItem] = useState<any>(null);
 
-  // Load favourites from localStorage
+  // Load favourites from IndexedDB
   useEffect(() => {
     loadFavourites();
     loadFavouriteAlbums();
     loadFavouritePlaylists();
+    loadFavouriteArtists();
   }, []);
 
-  const loadFavourites = () => {
-    const saved = localStorage.getItem('favouriteSongs');
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        // Sort by addedAt date (most recent first)
-        const sorted = parsed.sort((a: FavouriteSong, b: FavouriteSong) => {
-          return (b.addedAt || 0) - (a.addedAt || 0);
-        });
-        setFavourites(sorted);
-      } catch (e) {
-        setFavourites([]);
-      }
+  const loadFavourites = async () => {
+    const saved = await readFavourites(FAVOURITE_SONGS_KEY);
+    try {
+      const sorted = [...saved].sort((a: FavouriteSong, b: FavouriteSong) => {
+        return (b.addedAt || 0) - (a.addedAt || 0);
+      });
+      setFavourites(sorted);
+    } catch (error) {
+      setFavourites([]);
     }
   };
 
-  const loadFavouriteAlbums = () => {
-    const saved = localStorage.getItem('favouriteAlbums');
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        // Sort by addedAt date (most recent first)
-        const sorted = parsed.sort((a: FavouriteAlbum, b: FavouriteAlbum) => {
-          return (b.addedAt || 0) - (a.addedAt || 0);
-        });
-        setFavouriteAlbums(sorted);
-      } catch (e) {
-        setFavouriteAlbums([]);
-      }
+  const loadFavouriteAlbums = async () => {
+    const saved = await readFavourites(FAVOURITE_ALBUMS_KEY);
+    try {
+      const sorted = [...saved].sort((a: FavouriteAlbum, b: FavouriteAlbum) => {
+        return (b.addedAt || 0) - (a.addedAt || 0);
+      });
+      setFavouriteAlbums(sorted);
+    } catch (error) {
+      setFavouriteAlbums([]);
     }
   };
 
-  const loadFavouritePlaylists = () => {
-    const saved = localStorage.getItem('favouritePlaylists');
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        // Sort by addedAt date (most recent first)
-        const sorted = parsed.sort((a: FavouritePlaylist, b: FavouritePlaylist) => {
-          return (b.addedAt || 0) - (a.addedAt || 0);
-        });
-        setFavouritePlaylists(sorted);
-      } catch (e) {
-        setFavouritePlaylists([]);
-      }
+  const loadFavouritePlaylists = async () => {
+    const saved = await readFavourites(FAVOURITE_PLAYLISTS_KEY);
+    try {
+      const sorted = [...saved].sort((a: FavouritePlaylist, b: FavouritePlaylist) => {
+        return (b.addedAt || 0) - (a.addedAt || 0);
+      });
+      setFavouritePlaylists(sorted);
+    } catch (error) {
+      setFavouritePlaylists([]);
     }
   };
 
-  const removeFavourite = (songId: string) => {
+  const loadFavouriteArtists = async () => {
+    const saved = await readFavourites(FAVOURITE_ARTISTS_KEY);
+    try {
+      const sorted = [...saved].sort((a: FavouriteArtist, b: FavouriteArtist) => {
+        return (b.addedAt || 0) - (a.addedAt || 0);
+      });
+      setFavouriteArtists(sorted);
+    } catch (error) {
+      setFavouriteArtists([]);
+    }
+  };
+
+  const removeFavourite = async (songId: string) => {
     const updated = favourites.filter(song => song.id !== songId);
     setFavourites(updated);
-    localStorage.setItem('favouriteSongs', JSON.stringify(updated));
+    try {
+      await persistFavourites(FAVOURITE_SONGS_KEY, updated);
+    } catch (error) {
+      console.warn('Failed to persist favourite songs', error);
+    }
   };
 
-  const removeFavouriteAlbum = (albumId: string) => {
+  const removeFavouriteAlbum = async (albumId: string) => {
     const updated = favouriteAlbums.filter(album => album.id !== albumId);
     setFavouriteAlbums(updated);
-    localStorage.setItem('favouriteAlbums', JSON.stringify(updated));
+    try {
+      await persistFavourites(FAVOURITE_ALBUMS_KEY, updated);
+    } catch (error) {
+      console.warn('Failed to persist favourite albums', error);
+    }
   };
 
-  const removeFavouritePlaylist = (playlistId: string) => {
+  const removeFavouritePlaylist = async (playlistId: string) => {
     const updated = favouritePlaylists.filter(playlist => playlist.id !== playlistId);
     setFavouritePlaylists(updated);
-    localStorage.setItem('favouritePlaylists', JSON.stringify(updated));
+    try {
+      await persistFavourites(FAVOURITE_PLAYLISTS_KEY, updated);
+    } catch (error) {
+      console.warn('Failed to persist favourite playlists', error);
+    }
+  };
+
+  const removeFavouriteArtist = async (artistId: string) => {
+    const updated = favouriteArtists.filter(artist => artist.id !== artistId);
+    setFavouriteArtists(updated);
+    try {
+      await persistFavourites(FAVOURITE_ARTISTS_KEY, updated);
+    } catch (error) {
+      console.warn('Failed to persist favourite artists', error);
+    }
   };
 
   const handleMenuOpen = (event: React.MouseEvent<HTMLElement>, item: any) => {
@@ -142,14 +185,16 @@ const FavouritesPage: React.FC<FavouritesPageProps> = ({ onSongSelect }) => {
     setSelectedItem(null);
   };
 
-  const handleRemove = () => {
+  const handleRemove = async () => {
     if (selectedItem) {
       if (activeTab === 0) {
-        removeFavourite(selectedItem.id);
+        await removeFavourite(selectedItem.id);
       } else if (activeTab === 1) {
-        removeFavouriteAlbum(selectedItem.id);
+        await removeFavouriteAlbum(selectedItem.id);
       } else if (activeTab === 2) {
-        removeFavouritePlaylist(selectedItem.id);
+        await removeFavouritePlaylist(selectedItem.id);
+      } else if (activeTab === 3) {
+        await removeFavouriteArtist(selectedItem.id);
       }
     }
     handleMenuClose();
@@ -178,13 +223,15 @@ const FavouritesPage: React.FC<FavouritesPageProps> = ({ onSongSelect }) => {
   const getTotalCount = () => {
     if (activeTab === 0) return favourites.length;
     if (activeTab === 1) return favouriteAlbums.length;
-    return favouritePlaylists.length;
+    if (activeTab === 2) return favouritePlaylists.length;
+    return favouriteArtists.length;
   };
 
   const getTabLabel = () => {
     if (activeTab === 0) return 'Songs';
     if (activeTab === 1) return 'Albums';
-    return 'Playlists';
+    if (activeTab === 2) return 'Playlists';
+    return 'Artists';
   };
 
   return (
@@ -228,12 +275,17 @@ const FavouritesPage: React.FC<FavouritesPageProps> = ({ onSongSelect }) => {
               borderColor: 'divider',
               mb: 2,
               px: 0,
+              '& .MuiTabs-flexContainer': {
+                justifyContent: 'space-between',
+                width: '100%',
+              },
               '& .MuiTab-root': {
                 textTransform: 'none',
                 fontWeight: 500,
                 fontSize: '0.95rem',
-                minWidth: 80,
-                minHeight: 48,
+                minWidth: 70,
+                minHeight: 42,
+                px: 0.8,
               },
               '& .Mui-selected': {
                 color: 'primary.main',
@@ -244,6 +296,7 @@ const FavouritesPage: React.FC<FavouritesPageProps> = ({ onSongSelect }) => {
             <Tab icon={<MusicNoteIcon />} iconPosition="start" label="Songs" />
             <Tab icon={<AlbumIcon />} iconPosition="start" label="Albums" />
             <Tab icon={<PlaylistPlayIcon />} iconPosition="start" label="Playlists" />
+            <Tab icon={<PersonIcon />} iconPosition="start" label="Artists" />
           </Tabs>
         </Box>
 
@@ -396,6 +449,11 @@ const FavouritesPage: React.FC<FavouritesPageProps> = ({ onSongSelect }) => {
                 {favouriteAlbums.map((album) => (
                   <ListItem
                     key={album.id}
+                    onClick={() => {
+                      if (onAlbumSelect) {
+                        onAlbumSelect(album.id, album.name, album.image);
+                      }
+                    }}
                     sx={{
                       borderRadius: 1,
                       mb: 0.5,
@@ -516,6 +574,11 @@ const FavouritesPage: React.FC<FavouritesPageProps> = ({ onSongSelect }) => {
                 {favouritePlaylists.map((playlist) => (
                   <ListItem
                     key={playlist.id}
+                    onClick={() => {
+                      if (onPlaylistSelect) {
+                        onPlaylistSelect(playlist.id, playlist.name, playlist.image);
+                      }
+                    }}
                     sx={{
                       borderRadius: 1,
                       mb: 0.5,
@@ -608,6 +671,130 @@ const FavouritesPage: React.FC<FavouritesPageProps> = ({ onSongSelect }) => {
           </>
         )}
 
+        {/* Artists Tab */}
+        {activeTab === 3 && (
+          <>
+            {favouriteArtists.length === 0 ? (
+              <Box
+                sx={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  minHeight: '50vh',
+                  gap: 2,
+                  px: 2,
+                }}
+              >
+                <PersonIcon sx={{ fontSize: 80, color: 'text.disabled', opacity: 0.3 }} />
+                <Typography variant="h6" sx={{ color: 'text.secondary', textAlign: 'center' }}>
+                  No favourite artists yet
+                </Typography>
+                <Typography variant="body2" sx={{ color: 'text.disabled', textAlign: 'center' }}>
+                  Add artists to your library
+                </Typography>
+              </Box>
+            ) : (
+              <List sx={{ px: 2 }}>
+                {favouriteArtists.map((artist) => (
+                  <ListItem
+                    key={artist.id}
+                    onClick={() => {
+                      if (onArtistSelect) {
+                        onArtistSelect(artist.id, artist.name, artist.image);
+                      }
+                    }}
+                    sx={{
+                      borderRadius: 1,
+                      mb: 0.5,
+                      px: 0,
+                      py: 0.5,
+                      cursor: 'pointer',
+                      '&:hover': {
+                        bgcolor: (theme) =>
+                          theme.palette.mode === 'light'
+                            ? 'rgba(0, 188, 212, 0.08)'
+                            : 'rgba(255, 255, 255, 0.05)',
+                      },
+                    }}
+                    secondaryAction={
+                      <IconButton
+                        edge="end"
+                        onClick={(e) => handleMenuOpen(e, artist)}
+                        sx={{ color: 'text.secondary' }}
+                      >
+                        <MoreVertIcon />
+                      </IconButton>
+                    }
+                  >
+                    <ListItemAvatar sx={{ minWidth: 72 }}>
+                      <Avatar
+                        src={artist.image || ''}
+                        sx={{ 
+                          width: 56, 
+                          height: 56,
+                          bgcolor: artist.image ? 'transparent' : 'primary.main',
+                          fontSize: '1.5rem',
+                          border: '1px solid',
+                          borderColor: 'divider',
+                        }}
+                        imgProps={{
+                          loading: 'lazy',
+                          onError: (e) => {
+                            (e.target as HTMLImageElement).style.display = 'none';
+                          }
+                        }}
+                      >
+                        {!artist.image && <PersonIcon />}
+                      </Avatar>
+                    </ListItemAvatar>
+                    <ListItemText
+                      sx={{
+                        mr: 1.5,
+                        pr: 0.5,
+                        minWidth: 0,
+                        flex: 1
+                      }}
+                      primary={
+                        <Typography
+                          sx={{
+                            color: 'text.primary',
+                            fontWeight: 500,
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            whiteSpace: 'nowrap',
+                          }}
+                        >
+                          {decodeHtmlEntities(artist.name)}
+                        </Typography>
+                      }
+                      secondary={
+                        <Box>
+                          <Typography
+                            variant="body2"
+                            sx={{
+                              color: 'text.secondary',
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              whiteSpace: 'nowrap',
+                            }}
+                          >
+                            Artist
+                          </Typography>
+                          <Typography variant="caption" sx={{ color: 'text.disabled', display: 'block', mt: 0.25 }}>
+                            Added {formatDate(artist.addedAt)}
+                          </Typography>
+                        </Box>
+                      }
+                      secondaryTypographyProps={{ component: 'div' }}
+                    />
+                  </ListItem>
+                ))}
+              </List>
+            )}
+          </>
+        )}
+
         {/* Context Menu */}
         <Menu
           anchorEl={anchorEl}
@@ -628,6 +815,30 @@ const FavouritesPage: React.FC<FavouritesPageProps> = ({ onSongSelect }) => {
                 <PlayArrowIcon fontSize="small" />
               </ListItemIcon>
               <Typography variant="body2">Play Now</Typography>
+            </MenuItem>
+          )}
+          {activeTab === 1 && onAlbumSelect && (
+            <MenuItem onClick={() => { onAlbumSelect(selectedItem?.id, selectedItem?.name, selectedItem?.image); handleMenuClose(); }}>
+              <ListItemIcon>
+                <PlayArrowIcon fontSize="small" />
+              </ListItemIcon>
+              <Typography variant="body2">Open Album</Typography>
+            </MenuItem>
+          )}
+          {activeTab === 2 && onPlaylistSelect && (
+            <MenuItem onClick={() => { onPlaylistSelect(selectedItem?.id, selectedItem?.name, selectedItem?.image); handleMenuClose(); }}>
+              <ListItemIcon>
+                <PlayArrowIcon fontSize="small" />
+              </ListItemIcon>
+              <Typography variant="body2">Open Playlist</Typography>
+            </MenuItem>
+          )}
+          {activeTab === 3 && onArtistSelect && (
+            <MenuItem onClick={() => { onArtistSelect(selectedItem?.id, selectedItem?.name, selectedItem?.image); handleMenuClose(); }}>
+              <ListItemIcon>
+                <PlayArrowIcon fontSize="small" />
+              </ListItemIcon>
+              <Typography variant="body2">Open Artist</Typography>
             </MenuItem>
           )}
           <MenuItem onClick={handleRemove} sx={{ color: 'error.main' }}>

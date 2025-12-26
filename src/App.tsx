@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { ThemeProvider, CssBaseline, Box, Container, Snackbar } from '@mui/material';
 import { darkTheme, lightTheme } from './theme';
 import BottomNav from './components/BottomNav';
@@ -17,6 +17,7 @@ import { Song, CurrentSong } from './types/api';
 import { saavnApi } from './services/saavnApi';
 import { soundChartsApi, SoundChartsItem } from './services/soundChartsApi';
 import SearchPage from './pages/SearchPage';
+import { saveSongMetadata, saveDownloadRecord, setMeta, getDownloadRecord, getMeta, migrateLocalStorage } from './services/storage';
 
 const decodeHtmlEntities = (text: string): string => {
   if (!text) return text;
@@ -29,6 +30,31 @@ interface ChartSongWithSaavn extends SoundChartsItem {
   saavnData?: Song;
   isSearching?: boolean;
 }
+
+interface ArtistReference {
+  id?: string;
+  name?: string;
+}
+
+interface SessionData {
+  song?: CurrentSong;
+  progress?: number;
+  songQueue?: Song[];
+  activeTab?: string;
+  isPlaying?: boolean;
+}
+
+const joinArtistNames = (artists?: ArtistReference[]) =>
+  (artists ?? [])
+    .map(artist => artist?.name?.trim() ?? '')
+    .filter(name => name)
+    .join(', ');
+
+const joinArtistIds = (artists?: ArtistReference[]) =>
+  (artists ?? [])
+    .map(artist => artist?.id?.trim() ?? '')
+    .filter(id => id)
+    .join(',');
 
 function App() {
   // Welcome screen state - check if user has visited before
@@ -65,9 +91,23 @@ function App() {
     return saved ? parseInt(saved) : 0;
   });
   const [audio] = useState(() => new Audio());
+  const offlineBlobUrlRef = useRef<string | null>(null);
   
   // Queue management
   const [songQueue, setSongQueue] = useState<Song[]>([]);
+  const [currentContextSongs, setCurrentContextSongs] = useState<Song[]>([]);
+  
+  // Repeat mode: 'off' | 'all' | 'one'
+  const [repeatMode, setRepeatMode] = useState<'off' | 'all' | 'one'>(() => {
+    const saved = localStorage.getItem('repeatMode');
+    return (saved === 'all' || saved === 'one') ? saved : 'off';
+  });
+  
+  // Shuffle mode
+  const [shuffleMode, setShuffleMode] = useState<boolean>(() => {
+    const saved = localStorage.getItem('shuffleMode');
+    return saved === 'true';
+  });
   
   // Snackbar state
   const [snackbarOpen, setSnackbarOpen] = useState(false);
@@ -76,12 +116,92 @@ function App() {
   // Recently played page state
   const [showRecentlyPlayed, setShowRecentlyPlayed] = useState(false);
   
+  const trackBlobUrl = useCallback((url?: string | null) => {
+    if (offlineBlobUrlRef.current && offlineBlobUrlRef.current.startsWith('blob:')) {
+      URL.revokeObjectURL(offlineBlobUrlRef.current);
+    }
+    if (url && url.startsWith('blob:')) {
+      offlineBlobUrlRef.current = url;
+    } else {
+      offlineBlobUrlRef.current = null;
+    }
+  }, []);
+
+  const ensureOfflineAudioUrl = useCallback(async (songId: string, remoteUrl?: string) => {
+    const normalizedUrl = remoteUrl || '';
+    try {
+      const existing = await getDownloadRecord(songId);
+      if (existing?.blob) {
+        if (normalizedUrl && normalizedUrl !== existing.url) {
+          try {
+            await saveDownloadRecord(songId, { url: normalizedUrl });
+          } catch (saveError) {
+            console.warn('Unable to persist download metadata', saveError);
+          }
+        }
+        return URL.createObjectURL(existing.blob);
+      }
+
+      if (!normalizedUrl) return '';
+
+      const response = await fetch(normalizedUrl);
+      if (!response.ok) {
+        throw new Error(`Failed to download audio for ${songId}`);
+      }
+      const blob = await response.blob();
+      await saveDownloadRecord(songId, { blob, url: normalizedUrl });
+      return URL.createObjectURL(blob);
+    } catch (error) {
+      console.warn('Offline caching failed for song', songId, error);
+      if (normalizedUrl) {
+        try {
+          await saveDownloadRecord(songId, { url: normalizedUrl });
+        } catch (saveError) {
+          console.warn('Unable to persist download URL after caching failure', saveError);
+        }
+      }
+      return normalizedUrl;
+    }
+  }, []);
+  
+  useEffect(() => {
+    migrateLocalStorage();
+  }, []);
+
+  useEffect(() => {
+    const restoreSession = async () => {
+      const lastSession = await getMeta('lastSession') as SessionData | undefined;
+      if (lastSession?.song) {
+        const remoteUrl = lastSession.song.remoteDownloadUrl ?? lastSession.song.downloadUrl ?? '';
+        const playbackUrl = await ensureOfflineAudioUrl(lastSession.song.id, remoteUrl);
+        trackBlobUrl(playbackUrl);
+        setCurrentSong({
+          ...lastSession.song,
+          downloadUrl: playbackUrl,
+          remoteDownloadUrl: remoteUrl,
+        });
+        setSongProgress(lastSession.progress ?? 0);
+        setSongQueue(lastSession.songQueue ?? []);
+        setIsPlaying(!!lastSession.isPlaying);
+        setActiveTab(lastSession.activeTab || 'home');
+      }
+    };
+    restoreSession();
+  }, [ensureOfflineAudioUrl, trackBlobUrl]);
+
+  useEffect(() => {
+    return () => {
+      if (offlineBlobUrlRef.current && offlineBlobUrlRef.current.startsWith('blob:')) {
+        URL.revokeObjectURL(offlineBlobUrlRef.current);
+      }
+    };
+  }, []);
   // Playlist state
   const [selectedPlaylist, setSelectedPlaylist] = useState<{
     id: string;
     name: string;
     image: string;
-    type?: 'playlist' | 'album';
+    type?: 'playlist' | 'album' | 'artist';
     sourceTab?: string;
   } | null>(null);
   
@@ -161,22 +281,23 @@ function App() {
 
       try {
         setChartSongsLoading(true);
-        
-        // Check if we have cached data in localStorage
-        const cachedData = localStorage.getItem('chartSongs');
-        const cacheTimestamp = localStorage.getItem('chartSongsTimestamp');
         const cacheExpiry = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
-        
-        // Use cached data if it exists and is less than 24 hours old
-        if (cachedData && cacheTimestamp) {
-          const age = Date.now() - parseInt(cacheTimestamp);
-          if (age < cacheExpiry) {
-            const cached = JSON.parse(cachedData);
-            setChartSongs(cached);
-            setChartSongsLoaded(true);
-            setChartSongsLoading(false);
-            return;
-          }
+        const cachedData = await getMeta('chartSongs');
+        const cacheTimestamp = await getMeta('chartSongsTimestamp');
+        const parsedTimestamp =
+          typeof cacheTimestamp === 'number'
+            ? cacheTimestamp
+            : Number(cacheTimestamp);
+
+        if (
+          Array.isArray(cachedData) &&
+          Number.isFinite(parsedTimestamp) &&
+          Date.now() - parsedTimestamp < cacheExpiry
+        ) {
+          setChartSongs(cachedData);
+          setChartSongsLoaded(true);
+          setChartSongsLoading(false);
+          return;
         }
         
         const response = await soundChartsApi.getTopSongs(0, 100);
@@ -215,11 +336,11 @@ function App() {
             const processed = processedSongs.find(p => p.position === song.position);
             return processed || song;
           });
-          localStorage.setItem('chartSongs', JSON.stringify(finalSongs));
-          localStorage.setItem('chartSongsTimestamp', Date.now().toString());
+          await setMeta('chartSongs', finalSongs);
+          await setMeta('chartSongsTimestamp', Date.now());
         }
       } catch (err) {
-        // Error loading chart songs
+        console.warn('Failed to load chart songs', err);
       } finally {
         setChartSongsLoading(false);
       }
@@ -227,6 +348,27 @@ function App() {
 
     loadChartSongs();
   }, [showWelcome, activeTab, chartSongsLoaded]);
+
+  useEffect(() => {
+    if (!currentSong) return;
+    setMeta('lastSession', {
+      song: currentSong,
+      progress: songProgress,
+      songQueue,
+      activeTab,
+      isPlaying,
+    });
+  }, [currentSong, songProgress, songQueue, activeTab, isPlaying]);
+
+  // Save repeat mode to localStorage
+  useEffect(() => {
+    localStorage.setItem('repeatMode', repeatMode);
+  }, [repeatMode]);
+
+  // Save shuffle mode to localStorage
+  useEffect(() => {
+    localStorage.setItem('shuffleMode', String(shuffleMode));
+  }, [shuffleMode]);
 
   const searchSongOnSaavn = async (item: SoundChartsItem): Promise<Song | undefined> => {
     try {
@@ -281,8 +423,8 @@ function App() {
         
         for (const result of searchResults.data.results) {
           const resultSongName = normalizeText(result.name);
-          const primaryArtists = result.artists?.primary?.map((a: any) => a.name).join(', ') || '';
-          const featuredArtists = result.artists?.featured?.map((a: any) => a.name).join(', ') || '';
+          const primaryArtists = joinArtistNames(result.artists?.primary);
+          const featuredArtists = joinArtistNames(result.artists?.featured);
           const allArtists = `${primaryArtists} ${featuredArtists}`;
           const resultArtist = normalizeArtist(allArtists);
           
@@ -313,10 +455,10 @@ function App() {
             releaseDate: bestMatch.releaseDate || '',
             duration: bestMatch.duration || 0,
             label: bestMatch.label || '',
-            primaryArtists: bestMatch.artists?.primary?.map((a: any) => a.name).join(', ') || item.song.creditName,
-            primaryArtistsId: bestMatch.artists?.primary?.map((a: any) => a.id).join(',') || '',
-            featuredArtists: bestMatch.artists?.featured?.map((a: any) => a.name).join(', ') || '',
-            featuredArtistsId: bestMatch.artists?.featured?.map((a: any) => a.id).join(',') || '',
+            primaryArtists: joinArtistNames(bestMatch.artists?.primary) || item.song.creditName,
+            primaryArtistsId: joinArtistIds(bestMatch.artists?.primary) || '',
+            featuredArtists: joinArtistNames(bestMatch.artists?.featured) || '',
+            featuredArtistsId: joinArtistIds(bestMatch.artists?.featured) || '',
             explicitContent: bestMatch.explicitContent || 0,
             playCount: bestMatch.playCount || 0,
             language: bestMatch.language || '',
@@ -360,10 +502,10 @@ function App() {
             releaseDate: bestMatch.releaseDate || '',
             duration: bestMatch.duration || 0,
             label: bestMatch.label || '',
-            primaryArtists: bestMatch.artists?.primary?.map((a: any) => a.name).join(', ') || item.song.creditName,
-            primaryArtistsId: bestMatch.artists?.primary?.map((a: any) => a.id).join(',') || '',
-            featuredArtists: bestMatch.artists?.featured?.map((a: any) => a.name).join(', ') || '',
-            featuredArtistsId: bestMatch.artists?.featured?.map((a: any) => a.id).join(',') || '',
+            primaryArtists: joinArtistNames(bestMatch.artists?.primary) || item.song.creditName,
+            primaryArtistsId: joinArtistIds(bestMatch.artists?.primary) || '',
+            featuredArtists: joinArtistNames(bestMatch.artists?.featured) || '',
+            featuredArtistsId: joinArtistIds(bestMatch.artists?.featured) || '',
             explicitContent: bestMatch.explicitContent || 0,
             playCount: bestMatch.playCount || 0,
             language: bestMatch.language || '',
@@ -378,15 +520,27 @@ function App() {
       
       return undefined;
     } catch (err) {
+      console.warn('searchSongOnSaavn failed', err);
       return undefined;
     }
   };
 
   // Decode HTML entities in strings
-  const handleSongSelect = async (song: Song) => {
+  const handleSongSelect = async (song: Song, contextSongs?: Song[]) => {
     try {
       // Set loading state
       setIsLoadingSong(true);
+      
+      // If contextSongs provided, populate queue with remaining songs
+      if (contextSongs && contextSongs.length > 0) {
+        setCurrentContextSongs(contextSongs);
+        const currentIndex = contextSongs.findIndex(s => s.id === song.id);
+        if (currentIndex !== -1) {
+          // Add all songs after the selected one to the queue
+          const remainingSongs = contextSongs.slice(currentIndex + 1);
+          setSongQueue(remainingSongs);
+        }
+      }
       
       // Fetch complete song details with download URLs
       const songDetailsResponse = await saavnApi.getSongsByIds([song.id]);
@@ -442,9 +596,9 @@ function App() {
         return downloadUrls[downloadUrls.length - 1]?.url || downloadUrls[downloadUrls.length - 1]?.link || '';
       };
 
-      const getArtistNames = (artists: any): string => {
-        if (artists?.primary && Array.isArray(artists.primary)) {
-          return artists.primary.map((artist: any) => artist.name).join(', ');
+      const getArtistNames = (artists?: { primary?: ArtistReference[] }): string => {
+        if (artists?.primary && artists.primary.length > 0) {
+          return joinArtistNames(artists.primary);
         }
         return 'Unknown Artist';
       };
@@ -458,13 +612,16 @@ function App() {
         return;
       }
 
+      const playbackUrl = await ensureOfflineAudioUrl(songDetails.id, audioUrl);
+
       const newSong: CurrentSong = {
         id: songDetails.id,
         title: decodeHtmlEntities(songDetails.name),
         artist: decodeHtmlEntities(artistNames),
         albumArt: imageUrl,
         duration: songDetails.duration,
-        downloadUrl: audioUrl,
+        downloadUrl: playbackUrl,
+        remoteDownloadUrl: audioUrl,
         albumId: songDetails.album?.id || '',
         albumName: songDetails.album?.name || 'Unknown Album',
         label: songDetails.label || 'Unknown Label',
@@ -475,12 +632,17 @@ function App() {
         source: selectedPlaylist ? selectedPlaylist.name : undefined,
       };
 
+      await saveSongMetadata(songDetails as Song);
+
+      trackBlobUrl(playbackUrl);
+
       setCurrentSong(newSong);
       setIsPlaying(true);
       setIsLoadingSong(false);
       
       // Add to recently played in localStorage with complete song details
-      const recentlyPlayed = JSON.parse(localStorage.getItem('recentlyPlayed') || '[]');
+      const storedRecentlyPlayed = (await getMeta('recentlyPlayed')) as Song[] | undefined;
+      const recentlyPlayed = Array.isArray(storedRecentlyPlayed) ? storedRecentlyPlayed : [];
       // Remove if already exists to avoid duplicates
       const filtered = recentlyPlayed.filter((s: Song) => s.id !== songDetails.id);
       
@@ -494,9 +656,9 @@ function App() {
         duration: songDetails.duration || 0,
         label: songDetails.label || '',
         primaryArtists: artistNames, // Use the extracted artist names string
-        primaryArtistsId: songDetails.artists?.primary?.map((a: any) => a.id).join(',') || '',
-        featuredArtists: songDetails.artists?.featured?.map((a: any) => a.name).join(', ') || '',
-        featuredArtistsId: songDetails.artists?.featured?.map((a: any) => a.id).join(',') || '',
+        primaryArtistsId: joinArtistIds(songDetails.artists?.primary) || '',
+        featuredArtists: joinArtistNames(songDetails.artists?.featured) || '',
+        featuredArtistsId: joinArtistIds(songDetails.artists?.featured) || '',
         explicitContent: songDetails.explicitContent || 0,
         playCount: songDetails.playCount || 0,
         language: songDetails.language || '',
@@ -511,26 +673,54 @@ function App() {
       filtered.unshift(recentSong);
       // Keep only last 50 songs
       const limited = filtered.slice(0, 50);
-      localStorage.setItem('recentlyPlayed', JSON.stringify(limited));
+      await setMeta('recentlyPlayed', limited);
       // Don't automatically open full player, just start playing
     } catch (error) {
-      // Error loading song
+      console.warn('Failed to load song details', error);
       setIsLoadingSong(false);
     }
   };
 
-  const handleProgressSeek = (newTime: number) => {
+  const handleProgressSeek = useCallback((newTime: number) => {
     setSongProgress(newTime);
     audio.currentTime = newTime;
-  };
+  }, [audio]);
 
-  const handleNextSong = () => {
+  const handleNextSong = useCallback(() => {
     // Check if there's a song in the queue first
-    if (handleNextSongFromQueue()) {
+    if (songQueue.length > 0) {
+      const [nextSong, ...remainingQueue] = songQueue;
+      setSongQueue(remainingQueue);
+      handleSongSelect(nextSong);
       return;
     }
     
-    // Otherwise, play from chart songs
+    // Try to play next from current context
+    if (currentContextSongs.length > 0 && currentSong) {
+      const currentIndex = currentContextSongs.findIndex(s => s.id === currentSong.id);
+      
+      if (shuffleMode) {
+        // Shuffle: pick a random song from context (excluding current)
+        const availableSongs = currentContextSongs.filter(s => s.id !== currentSong.id);
+        if (availableSongs.length > 0) {
+          const randomIndex = Math.floor(Math.random() * availableSongs.length);
+          handleSongSelect(availableSongs[randomIndex], currentContextSongs);
+          return;
+        }
+      }
+      
+      if (currentIndex >= 0 && currentIndex < currentContextSongs.length - 1) {
+        const nextSong = currentContextSongs[currentIndex + 1];
+        handleSongSelect(nextSong, currentContextSongs);
+        return;
+      } else if (repeatMode === 'all' && currentIndex === currentContextSongs.length - 1) {
+        // Loop back to first song in context
+        handleSongSelect(currentContextSongs[0], currentContextSongs);
+        return;
+      }
+    }
+    
+    // Otherwise, play from chart songs as fallback
     if (chartSongs.length === 0) return;
     
     // Find current song index in chartSongs
@@ -547,9 +737,20 @@ function App() {
     if (nextChartSong?.saavnData) {
       handleSongSelect(nextChartSong.saavnData);
     }
-  };
+  }, [songQueue, currentContextSongs, currentSong, shuffleMode, repeatMode, chartSongs]);
 
-  const handlePreviousSong = () => {
+  const handlePreviousSong = useCallback(() => {
+    // Try from current context first
+    if (currentContextSongs.length > 0 && currentSong) {
+      const currentIndex = currentContextSongs.findIndex(s => s.id === currentSong.id);
+      if (currentIndex > 0) {
+        const previousSong = currentContextSongs[currentIndex - 1];
+        handleSongSelect(previousSong, currentContextSongs);
+        return;
+      }
+    }
+    
+    // Fallback to chart songs
     if (chartSongs.length === 0) return;
     
     // Find current song index in chartSongs
@@ -566,10 +767,14 @@ function App() {
     if (previousChartSong?.saavnData) {
       handleSongSelect(previousChartSong.saavnData);
     }
-  };
+  }, [currentContextSongs, currentSong, chartSongs]);
 
   const handlePlaylistSelect = (playlistId: string, playlistName: string, playlistImage: string) => {
     setSelectedPlaylist({ id: playlistId, name: playlistName, image: playlistImage, type: 'playlist', sourceTab: activeTab });
+  };
+
+  const handleArtistSelect = (artistId: string, artistName: string, artistImage: string) => {
+    setSelectedPlaylist({ id: artistId, name: artistName, image: artistImage, type: 'artist', sourceTab: activeTab });
   };
 
   const handleAlbumSelect = (albumId: string, albumName: string, albumImage: string) => {
@@ -671,7 +876,7 @@ function App() {
       try {
         navigator.mediaSession.setActionHandler(action, handler);
       } catch (error) {
-        // Some browsers throw if the action isn't supported
+        console.debug('MediaSession action not supported', action, error);
       }
     };
 
@@ -704,16 +909,6 @@ function App() {
     setSongQueue(prev => [song, ...prev]);
     setSnackbarMessage('Will play next');
     setSnackbarOpen(true);
-  };
-
-  const handleNextSongFromQueue = () => {
-    if (songQueue.length > 0) {
-      const [nextSong, ...remainingQueue] = songQueue;
-      setSongQueue(remainingQueue);
-      handleSongSelect(nextSong);
-      return true;
-    }
-    return false;
   };
 
   // Sync audio source when song changes
@@ -749,7 +944,13 @@ function App() {
 
     const handleEnded = () => {
       setSongProgress(0);
-      handleNextSong();
+      if (repeatMode === 'one') {
+        // Repeat current song
+        audio.currentTime = 0;
+        audio.play();
+      } else {
+        handleNextSong();
+      }
     };
 
     audio.addEventListener('timeupdate', updateProgress);
@@ -781,10 +982,10 @@ function App() {
         releaseDate: songDetails.releaseDate || '',
         duration: songDetails.duration || 0,
         label: songDetails.label || '',
-        primaryArtists: songDetails.artists?.primary?.map((a: any) => a.name).join(', ') || '',
-        primaryArtistsId: songDetails.artists?.primary?.map((a: any) => a.id).join(',') || '',
-        featuredArtists: songDetails.artists?.featured?.map((a: any) => a.name).join(', ') || '',
-        featuredArtistsId: songDetails.artists?.featured?.map((a: any) => a.id).join(',') || '',
+        primaryArtists: joinArtistNames(songDetails.artists?.primary) || '',
+        primaryArtistsId: joinArtistIds(songDetails.artists?.primary) || '',
+        featuredArtists: joinArtistNames(songDetails.artists?.featured) || '',
+        featuredArtistsId: joinArtistIds(songDetails.artists?.featured) || '',
         explicitContent: songDetails.explicitContent || 0,
         playCount: songDetails.playCount || 0,
         language: songDetails.language || '',
@@ -797,7 +998,7 @@ function App() {
       
       handleSongSelect(song);
     } catch (error) {
-      // Error loading favourite song
+      console.warn('Failed to load favourite song', error);
     }
   };
 
@@ -861,6 +1062,7 @@ function App() {
             onViewAllCharts={handleViewAllCharts}
             onAlbumSelect={handleAlbumSelect}
             onPlaylistSelect={handlePlaylistSelect}
+            onArtistSelect={handleArtistSelect}
             onRecentlyPlayedClick={handleRecentlyPlayedClick}
             onSettingsClick={handleSettingsClick}
             onPlayNext={handlePlayNext}
@@ -905,6 +1107,9 @@ function App() {
         return (
           <FavouritesPage 
             onSongSelect={handleFavouriteSongSelect}
+            onAlbumSelect={handleAlbumSelect}
+            onPlaylistSelect={handlePlaylistSelect}
+            onArtistSelect={handleArtistSelect}
           />
         );
       default:
@@ -963,6 +1168,10 @@ function App() {
                 songQueue={songQueue}
                 progress={songProgress}
                 onProgressChange={handleProgressSeek}
+                repeatMode={repeatMode}
+                onRepeatModeChange={setRepeatMode}
+                shuffleMode={shuffleMode}
+                onShuffleModeChange={setShuffleMode}
                 // Song details for info popup
                 albumId={currentSong.albumId}
                 albumName={currentSong.albumName}

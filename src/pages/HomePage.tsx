@@ -1,5 +1,15 @@
 import React, { useEffect, useState } from 'react';
-import { Box, Typography, CircularProgress, Avatar, Skeleton, IconButton, Menu, MenuItem, ListItemIcon } from '@mui/material';
+import {
+  Box,
+  Typography,
+  CircularProgress,
+  Avatar,
+  Skeleton,
+  IconButton,
+  Menu,
+  MenuItem,
+  ListItemIcon,
+} from '@mui/material';
 import MoreVertIcon from '@mui/icons-material/MoreVert';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import FavoriteBorderIcon from '@mui/icons-material/FavoriteBorder';
@@ -13,14 +23,17 @@ import { saavnApi } from '../services/saavnApi';
 import AlbumIcon from '@mui/icons-material/Album';
 import PlaylistPlayIcon from '@mui/icons-material/PlaylistPlay';
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
+import MusicNoteIcon from '@mui/icons-material/MusicNote';
+import { FAVOURITE_SONGS_KEY, persistFavourites, readFavourites, getMeta, setMeta } from '../services/storage';
 
 interface HomePageProps {
-  onSongSelect: (song: Song) => void;
+  onSongSelect: (song: Song, contextSongs?: Song[]) => void;
   chartSongs: ChartSongWithSaavn[];
   chartSongsLoading: boolean;
   onViewAllCharts: () => void;
   onAlbumSelect: (albumId: string, albumName: string, albumImage: string) => void;
   onPlaylistSelect: (playlistId: string, playlistName: string, playlistImage: string) => void;
+  onArtistSelect: (artistId: string, artistName: string, artistImage: string) => void;
   onRecentlyPlayedClick?: () => void;
   onSettingsClick?: () => void;
   onAddToQueue?: (song: Song) => void;
@@ -33,7 +46,94 @@ interface ChartSongWithSaavn extends SoundChartsItem {
   isSearching?: boolean;
 }
 
-const HomePage: React.FC<HomePageProps> = ({ onSongSelect, chartSongs, chartSongsLoading, onViewAllCharts, onAlbumSelect, onPlaylistSelect, onRecentlyPlayedClick, onSettingsClick, onAddToQueue, onPlayNext, onShowSnackbar }) => {
+const CACHE_DURATION_MS = 24 * 60 * 60 * 1000;
+const LATEST_ALBUMS_KEY = 'latestAlbums';
+const LATEST_ALBUMS_TIMESTAMP_KEY = 'latestAlbumsTimestamp';
+const TRENDING_PLAYLISTS_KEY = 'trendingPlaylists';
+const TRENDING_PLAYLISTS_TIMESTAMP_KEY = 'trendingPlaylistsTimestamp';
+const TOP_ARTISTS_QUERY = 'latest';
+const TOP_ARTISTS_LIMIT = 12;
+const TOP_ARTISTS_SEARCH_LIMIT = 30;
+
+interface ArtistPreview {
+  id?: string;
+  name?: string;
+  image?: string;
+}
+
+const getHighQualityImage = (images?: Array<{ quality?: string; url?: string; link?: string }>): string => {
+  if (!images || images.length === 0) return '';
+  const qualities = ['500x500', '150x150', '50x50'];
+  for (const quality of qualities) {
+    const img = images.find(image => image.quality === quality);
+    if (img?.url) return img.url;
+    if (img?.link) return img.link;
+  }
+  const fallback = images.find(image => image.url || image.link);
+  if (fallback) {
+    return fallback.url || fallback.link || '';
+  }
+  return '';
+};
+
+const normalizeArtistName = (raw?: string): string => {
+  const decoded = decodeHtmlEntities(raw || '');
+  return decoded.replace(/\s+/g, ' ').trim();
+};
+
+
+const collectArtistImageSources = (candidate: any): Array<{ quality?: string; url?: string; link?: string }> => {
+  const sources: Array<{ quality?: string; url?: string; link?: string }> = [];
+  if (!candidate) return sources;
+  if (Array.isArray(candidate.image)) {
+    sources.push(...candidate.image.filter(Boolean));
+  }
+  if (Array.isArray(candidate.images)) {
+    sources.push(...candidate.images.filter(Boolean));
+  }
+  if (candidate.imageUrl) {
+    sources.push({ link: candidate.imageUrl });
+  }
+  if (candidate.cover) {
+    sources.push({ link: candidate.cover });
+  }
+  if (candidate.thumbnail) {
+    sources.push({ link: candidate.thumbnail });
+  }
+  if (candidate.avatar) {
+    if (typeof candidate.avatar === 'string') {
+      sources.push({ link: candidate.avatar });
+    } else if (candidate.avatar?.url) {
+      sources.push({ link: candidate.avatar.url });
+    }
+  }
+  if (candidate.avatarUrl) {
+    sources.push({ link: candidate.avatarUrl });
+  }
+  return sources;
+};
+
+const decodeHtmlEntities = (text: string): string => {
+  if (!text || typeof document === 'undefined') return text;
+  const textarea = document.createElement('textarea');
+  textarea.innerHTML = text;
+  return textarea.value;
+};
+
+const HomePage: React.FC<HomePageProps> = ({
+  onSongSelect,
+  chartSongs,
+  chartSongsLoading,
+  onViewAllCharts,
+  onAlbumSelect,
+  onPlaylistSelect,
+  onArtistSelect,
+  onRecentlyPlayedClick,
+  onSettingsClick,
+  onAddToQueue,
+  onPlayNext,
+  onShowSnackbar,
+}) => {
   const [displayedSongs, setDisplayedSongs] = useState<ChartSongWithSaavn[]>([]);
   const [latestAlbums, setLatestAlbums] = useState<any[]>([]);
   const [albumsLoading, setAlbumsLoading] = useState(true);
@@ -44,6 +144,9 @@ const HomePage: React.FC<HomePageProps> = ({ onSongSelect, chartSongs, chartSong
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [selectedSong, setSelectedSong] = useState<ChartSongWithSaavn | null>(null);
   const [favouriteSongs, setFavouriteSongs] = useState<string[]>([]);
+  const [topArtists, setTopArtists] = useState<ArtistPreview[]>([]);
+  const [topArtistsLoading, setTopArtistsLoading] = useState(false);
+  const [topArtistsError, setTopArtistsError] = useState<string | null>(null);
 
   // Fetch latest albums only once
   useEffect(() => {
@@ -52,20 +155,21 @@ const HomePage: React.FC<HomePageProps> = ({ onSongSelect, chartSongs, chartSong
       
       try {
         setAlbumsLoading(true);
+        const cachedData = await getMeta(LATEST_ALBUMS_KEY);
+        const cacheTimestamp = await getMeta(LATEST_ALBUMS_TIMESTAMP_KEY);
+        const parsedTimestamp =
+          typeof cacheTimestamp === 'number'
+            ? cacheTimestamp
+            : Number(cacheTimestamp);
         
-        // Check localStorage cache
-        const cachedData = localStorage.getItem('latestAlbums');
-        const cacheTimestamp = localStorage.getItem('latestAlbumsTimestamp');
-        const cacheExpiry = 24 * 60 * 60 * 1000; // 24 hours
-        
-        if (cachedData && cacheTimestamp) {
-          const age = Date.now() - parseInt(cacheTimestamp);
-          if (age < cacheExpiry) {
-            setLatestAlbums(JSON.parse(cachedData));
-            setAlbumsFetched(true);
-            setAlbumsLoading(false);
-            return;
-          }
+        if (
+          Array.isArray(cachedData) &&
+          Number.isFinite(parsedTimestamp) &&
+          Date.now() - parsedTimestamp < CACHE_DURATION_MS
+        ) {
+          setLatestAlbums(cachedData);
+          setAlbumsFetched(true);
+          return;
         }
         
         const response = await saavnApi.searchAlbums('latest', 10);
@@ -73,12 +177,11 @@ const HomePage: React.FC<HomePageProps> = ({ onSongSelect, chartSongs, chartSong
           const albums = response.data.results.slice(0, 10);
           setLatestAlbums(albums);
           setAlbumsFetched(true);
-          // Cache the data
-          localStorage.setItem('latestAlbums', JSON.stringify(albums));
-          localStorage.setItem('latestAlbumsTimestamp', Date.now().toString());
+          await setMeta(LATEST_ALBUMS_KEY, albums);
+          await setMeta(LATEST_ALBUMS_TIMESTAMP_KEY, Date.now());
         }
       } catch (error) {
-        // Error fetching albums
+        console.warn('Failed to load latest albums', error);
       } finally {
         setAlbumsLoading(false);
       }
@@ -94,20 +197,21 @@ const HomePage: React.FC<HomePageProps> = ({ onSongSelect, chartSongs, chartSong
       
       try {
         setPlaylistsLoading(true);
+        const cachedData = await getMeta(TRENDING_PLAYLISTS_KEY);
+        const cacheTimestamp = await getMeta(TRENDING_PLAYLISTS_TIMESTAMP_KEY);
+        const parsedTimestamp =
+          typeof cacheTimestamp === 'number'
+            ? cacheTimestamp
+            : Number(cacheTimestamp);
         
-        // Check localStorage cache
-        const cachedData = localStorage.getItem('trendingPlaylists');
-        const cacheTimestamp = localStorage.getItem('trendingPlaylistsTimestamp');
-        const cacheExpiry = 24 * 60 * 60 * 1000; // 24 hours
-        
-        if (cachedData && cacheTimestamp) {
-          const age = Date.now() - parseInt(cacheTimestamp);
-          if (age < cacheExpiry) {
-            setTrendingPlaylists(JSON.parse(cachedData));
-            setPlaylistsFetched(true);
-            setPlaylistsLoading(false);
-            return;
-          }
+        if (
+          Array.isArray(cachedData) &&
+          Number.isFinite(parsedTimestamp) &&
+          Date.now() - parsedTimestamp < CACHE_DURATION_MS
+        ) {
+          setTrendingPlaylists(cachedData);
+          setPlaylistsFetched(true);
+          return;
         }
         
         const response = await saavnApi.searchPlaylists('2025', 10);
@@ -115,12 +219,11 @@ const HomePage: React.FC<HomePageProps> = ({ onSongSelect, chartSongs, chartSong
           const playlists = response.data.results.slice(0, 10);
           setTrendingPlaylists(playlists);
           setPlaylistsFetched(true);
-          // Cache the data
-          localStorage.setItem('trendingPlaylists', JSON.stringify(playlists));
-          localStorage.setItem('trendingPlaylistsTimestamp', Date.now().toString());
+          await setMeta(TRENDING_PLAYLISTS_KEY, playlists);
+          await setMeta(TRENDING_PLAYLISTS_TIMESTAMP_KEY, Date.now());
         }
       } catch (error) {
-        // Error fetching playlists
+        console.warn('Failed to load trending playlists', error);
       } finally {
         setPlaylistsLoading(false);
       }
@@ -138,20 +241,81 @@ const HomePage: React.FC<HomePageProps> = ({ onSongSelect, chartSongs, chartSong
 
   // Load favourite songs
   useEffect(() => {
-    const saved = localStorage.getItem('favouriteSongs');
-    if (saved) {
+    const loadFavouriteIds = async () => {
+      const saved = await readFavourites(FAVOURITE_SONGS_KEY);
+      setFavouriteSongs(saved.map((song: any) => song.id));
+    };
+
+    loadFavouriteIds();
+  }, []);
+
+  useEffect(() => {
+    let isMounted = true;
+    const fetchTopArtists = async () => {
       try {
-        const parsed = JSON.parse(saved);
-        setFavouriteSongs(parsed.map((song: any) => song.id));
-      } catch (e) {
-        setFavouriteSongs([]);
+        setTopArtistsLoading(true);
+        setTopArtistsError(null);
+        
+        // Check cache first
+        const cachedArtists = await getMeta('topArtists');
+        const cachedTimestamp = await getMeta('topArtistsTimestamp');
+        const now = Date.now();
+        const CACHE_DURATION = 24 * 60 * 60 * 1000; // 24 hours
+        const parsedCachedTimestamp = typeof cachedTimestamp === 'number' ? cachedTimestamp : Number(cachedTimestamp);
+        
+        if (Array.isArray(cachedArtists) && Number.isFinite(parsedCachedTimestamp) && (now - parsedCachedTimestamp < CACHE_DURATION)) {
+          if (isMounted) {
+            setTopArtists(cachedArtists);
+            setTopArtistsLoading(false);
+          }
+          return;
+        }
+        
+        // Fetch fresh data
+        const response = await saavnApi.searchArtists(TOP_ARTISTS_QUERY, TOP_ARTISTS_SEARCH_LIMIT);
+        const candidates = response?.data?.results ?? [];
+        const curated: ArtistPreview[] = [];
+        const seen = new Set<string>();
+        for (const candidate of candidates) {
+          if (!candidate?.id || seen.has(candidate.id)) continue;
+          seen.add(candidate.id);
+          const normalizedName = normalizeArtistName(candidate.name);
+          if (!normalizedName) continue;
+          const image = getHighQualityImage(collectArtistImageSources(candidate));
+          curated.push({ id: candidate.id, name: normalizedName, image });
+          if (curated.length >= TOP_ARTISTS_LIMIT) break;
+        }
+        
+        // Cache the results
+        await setMeta('topArtists', curated);
+        await setMeta('topArtistsTimestamp', now);
+        
+        if (isMounted) {
+          setTopArtists(curated);
+        }
+      } catch (error) {
+        console.warn('Failed to load top artists', error);
+        if (isMounted) {
+          setTopArtistsError('Unable to load artists right now');
+        }
+      } finally {
+        if (isMounted) {
+          setTopArtistsLoading(false);
+        }
       }
-    }
+    };
+
+    fetchTopArtists();
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   const handleSongClick = (song: ChartSongWithSaavn) => {
     if (song.saavnData) {
-      onSongSelect(song.saavnData);
+      // Pass all chart songs as context
+      const allChartSongs = chartSongs.map(cs => cs.saavnData).filter((s): s is Song => s !== null);
+      onSongSelect(song.saavnData, allChartSongs);
     }
   };
 
@@ -180,47 +344,45 @@ const HomePage: React.FC<HomePageProps> = ({ onSongSelect, chartSongs, chartSong
     handleMenuClose();
   };
 
-  const handleAddToFavourites = () => {
+  const handleAddToFavourites = async () => {
     if (!selectedSong?.saavnData) return;
 
-    const saved = localStorage.getItem('favouriteSongs');
-    let favourites = [];
-    
     try {
-      favourites = saved ? JSON.parse(saved) : [];
-    } catch (e) {
-      favourites = [];
-    }
+      const favourites = await readFavourites(FAVOURITE_SONGS_KEY);
+      const isFavourite = favourites.some((song: any) => song.id === selectedSong.saavnData!.id);
 
-    const isFavourite = favourites.some((song: any) => song.id === selectedSong.saavnData!.id);
-
-    if (isFavourite) {
-      // Remove from favourites
-      favourites = favourites.filter((song: any) => song.id !== selectedSong.saavnData!.id);
-      setFavouriteSongs(prev => prev.filter(id => id !== selectedSong.saavnData!.id));
-      if (onShowSnackbar) {
-        onShowSnackbar('Removed from favourites');
+      if (isFavourite) {
+        const updated = favourites.filter((song: any) => song.id !== selectedSong.saavnData!.id);
+        setFavouriteSongs(prev => prev.filter(id => id !== selectedSong.saavnData!.id));
+        await persistFavourites(FAVOURITE_SONGS_KEY, updated);
+        if (onShowSnackbar) {
+          onShowSnackbar('Removed from favourites');
+        }
+      } else {
+        const newFavourite = {
+          id: selectedSong.saavnData.id,
+          name: selectedSong.saavnData.name,
+          artist: selectedSong.saavnData.primaryArtists,
+          albumArt: selectedSong.saavnData.image && selectedSong.saavnData.image.length > 0 
+            ? selectedSong.saavnData.image[0].link || ''
+            : '',
+          addedAt: Date.now(),
+        };
+        const updated = [...favourites, newFavourite];
+        setFavouriteSongs(prev => [...prev, selectedSong.saavnData!.id]);
+        await persistFavourites(FAVOURITE_SONGS_KEY, updated);
+        if (onShowSnackbar) {
+          onShowSnackbar('Added to favourites ❤️');
+        }
       }
-    } else {
-      // Add to favourites
-      const newFavourite = {
-        id: selectedSong.saavnData.id,
-        name: selectedSong.saavnData.name,
-        artist: selectedSong.saavnData.primaryArtists,
-        albumArt: selectedSong.saavnData.image && selectedSong.saavnData.image.length > 0 
-          ? selectedSong.saavnData.image[0].link || ''
-          : '',
-        addedAt: Date.now(),
-      };
-      favourites.push(newFavourite);
-      setFavouriteSongs(prev => [...prev, selectedSong.saavnData!.id]);
-      if (onShowSnackbar) {
-        onShowSnackbar('Added to favourites ❤️');
-      }
+    } catch (error) {
+      console.warn('Unable to update favourite songs', error);
     }
+  };
 
-    localStorage.setItem('favouriteSongs', JSON.stringify(favourites));
-    handleMenuClose();
+  const handleArtistCardClick = (artist: ArtistPreview) => {
+    if (!artist?.id) return;
+    onArtistSelect(artist.id, artist.name || 'Artist', artist.image || '');
   };
 
   const getImageUrl = (imageArray: any[]): string => {
@@ -239,16 +401,6 @@ const HomePage: React.FC<HomePageProps> = ({ onSongSelect, chartSongs, chartSong
     
     const firstImg = imageArray[0];
     return firstImg?.url || firstImg?.link || '';
-  };
-
-  const getHighQualityImage = (images: Array<{ quality: string; url: string }>) => {
-    if (!images || images.length === 0) return '';
-    const qualities = ['500x500', '150x150', '50x50'];
-    for (const quality of qualities) {
-      const img = images.find(img => img.quality === quality);
-      if (img?.url) return img.url;
-    }
-    return images[images.length - 1]?.url || '';
   };
 
   return (
@@ -404,6 +556,82 @@ const HomePage: React.FC<HomePageProps> = ({ onSongSelect, chartSongs, chartSong
                 </Box>
               ))}
             </Box>
+          )}
+        </Box>
+
+        <Box sx={{ mb: 4 }}>
+          <Typography variant="h6" sx={{ color: 'text.secondary', mb: 2, fontWeight: 500 }}>
+            Top Artists
+          </Typography>
+          {topArtistsLoading ? (
+            <Box sx={{ display: 'flex', justifyContent: 'center', py: 2 }}>
+              <CircularProgress size={24} sx={{ color: 'primary.main' }} />
+            </Box>
+          ) : topArtistsError ? (
+            <Typography variant="body2" color="error">
+              {topArtistsError}
+            </Typography>
+          ) : topArtists.length > 0 ? (
+            <Box
+              sx={{
+                display: 'flex',
+                gap: 2,
+                overflowX: 'auto',
+                pb: 1,
+                scrollbarWidth: 'none',
+                msOverflowStyle: 'none',
+                '&::-webkit-scrollbar': {
+                  display: 'none',
+                },
+              }}
+            >
+              {topArtists.map((artist) => (
+                <Box
+                  key={artist.id ?? artist.name}
+                  onClick={() => handleArtistCardClick(artist)}
+                  sx={{
+                    minWidth: 140,
+                    maxWidth: 140,
+                    cursor: 'pointer',
+                    transition: 'transform 0.2s',
+                    '&:hover': {
+                      transform: 'scale(1.05)',
+                    },
+                  }}
+                >
+                  <Avatar
+                    src={artist.image || undefined}
+                    variant="circular"
+                    imgProps={{ loading: 'lazy' }}
+                    sx={{
+                      width: 140,
+                      height: 140,
+                      mb: 1,
+                      boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)',
+                    }}
+                  >
+                    <MusicNoteIcon sx={{ fontSize: 60 }} />
+                  </Avatar>
+                  <Typography
+                    variant="body2"
+                    sx={{
+                      fontWeight: 600,
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      whiteSpace: 'nowrap',
+                      color: 'text.primary',
+                      textAlign: 'center',
+                    }}
+                  >
+                    {artist.name}
+                  </Typography>
+                </Box>
+              ))}
+            </Box>
+          ) : (
+            <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+              No artists available right now.
+            </Typography>
           )}
         </Box>
 

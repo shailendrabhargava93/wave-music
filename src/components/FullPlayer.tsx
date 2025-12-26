@@ -19,12 +19,16 @@ import SkipPreviousIcon from '@mui/icons-material/SkipPrevious';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import PauseIcon from '@mui/icons-material/Pause';
 import SkipNextIcon from '@mui/icons-material/SkipNext';
+import RepeatIcon from '@mui/icons-material/Repeat';
+import RepeatOneIcon from '@mui/icons-material/RepeatOne';
+import ShuffleIcon from '@mui/icons-material/Shuffle';
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 import CloseIcon from '@mui/icons-material/Close';
 import QueueMusicIcon from '@mui/icons-material/QueueMusic';
 import UpNextDrawer from './UpNextDrawer';
 import { saavnApi } from '../services/saavnApi';
 import { Song } from '../types/api';
+import { FAVOURITE_SONGS_KEY, persistFavourites, readFavourites } from '../services/storage';
 
 interface FullPlayerProps {
   open: boolean;
@@ -38,10 +42,14 @@ interface FullPlayerProps {
   onTogglePlay?: () => void;
   onNextSong?: () => void;
   onPreviousSong?: () => void;
-  onSongSelect?: (song: Song) => void;
+  onSongSelect?: (song: Song, contextSongs?: Song[]) => void;
   songQueue?: Song[];
   progress?: number;
   onProgressChange?: (progress: number) => void;
+  repeatMode?: 'off' | 'all' | 'one';
+  onRepeatModeChange?: (mode: 'off' | 'all' | 'one') => void;
+  shuffleMode?: boolean;
+  onShuffleModeChange?: (shuffle: boolean) => void;
   // Song details for info popup
   albumId?: string;
   albumName?: string;
@@ -69,6 +77,10 @@ const FullPlayer: React.FC<FullPlayerProps> = ({
   songQueue = [],
   progress: externalProgress = 0,
   onProgressChange,
+  repeatMode = 'off',
+  onRepeatModeChange,
+  shuffleMode = false,
+  onShuffleModeChange,
   albumId,
   albumName,
   label,
@@ -100,17 +112,18 @@ const FullPlayer: React.FC<FullPlayerProps> = ({
   useEffect(() => {
     if (!songId) return;
     
-    const saved = localStorage.getItem('favouriteSongs');
-    if (saved) {
+    const checkFavourites = async () => {
       try {
-        const favourites = JSON.parse(saved);
+        const favourites = await readFavourites(FAVOURITE_SONGS_KEY);
         const isFav = favourites.some((song: any) => song.id === songId);
         setIsFavorite(isFav);
-      } catch (e) {
-        // Error checking favourites
+      } catch (error) {
+        console.warn('Unable to load favourite songs', error);
       }
-    }
-  }, [songId, songTitle]);
+    };
+
+    checkFavourites();
+  }, [songId]);
 
   // Fetch album songs when song changes (for Up Next)
   useEffect(() => {
@@ -146,22 +159,23 @@ const FullPlayer: React.FC<FullPlayerProps> = ({
   }, [albumId, songId]);
 
   // Toggle favourite status
-  const toggleFavorite = () => {
+  const toggleFavorite = async () => {
     if (!songId) return;
 
-    const saved = localStorage.getItem('favouriteSongs');
-    let favourites = saved ? JSON.parse(saved) : [];
-
+    const favourites = await readFavourites(FAVOURITE_SONGS_KEY);
     const existingIndex = favourites.findIndex((song: any) => song.id === songId);
 
     if (existingIndex >= 0) {
-      // Remove from favourites
-      favourites.splice(existingIndex, 1);
+      const updated = favourites.filter((song: any) => song.id !== songId);
       setIsFavorite(false);
       setSnackbarMessage('Removed from favourites');
       setSnackbarOpen(true);
+      try {
+        await persistFavourites(FAVOURITE_SONGS_KEY, updated);
+      } catch (error) {
+        console.warn('Unable to persist favourite songs', error);
+      }
     } else {
-      // Add to favourites
       const newFavourite = {
         id: songId,
         name: songTitle,
@@ -169,13 +183,16 @@ const FullPlayer: React.FC<FullPlayerProps> = ({
         albumArt: albumArt || '',
         addedAt: Date.now(),
       };
-      favourites.unshift(newFavourite); // Add to beginning
+      const updated = [newFavourite, ...favourites];
       setIsFavorite(true);
       setSnackbarMessage('Added to favourites ❤️');
       setSnackbarOpen(true);
+      try {
+        await persistFavourites(FAVOURITE_SONGS_KEY, updated);
+      } catch (error) {
+        console.warn('Unable to persist favourite songs', error);
+      }
     }
-
-    localStorage.setItem('favouriteSongs', JSON.stringify(favourites));
   };
 
   const formatTime = (seconds: number) => {
@@ -386,6 +403,19 @@ const FullPlayer: React.FC<FullPlayerProps> = ({
           }}
         >
           <IconButton
+            onClick={() => {
+              if (onShuffleModeChange) {
+                onShuffleModeChange(!shuffleMode);
+              }
+            }}
+            sx={{ 
+              color: shuffleMode ? 'primary.main' : 'text.secondary',
+            }}
+            aria-label="shuffle"
+          >
+            <ShuffleIcon sx={{ fontSize: 28 }} />
+          </IconButton>
+          <IconButton
             onClick={onPreviousSong}
             sx={{ color: 'text.primary' }}
             aria-label="previous track"
@@ -418,6 +448,24 @@ const FullPlayer: React.FC<FullPlayerProps> = ({
             aria-label="next track"
           >
             <SkipNextIcon sx={{ fontSize: 40 }} />
+          </IconButton>
+          <IconButton
+            onClick={() => {
+              if (onRepeatModeChange) {
+                const nextMode = repeatMode === 'off' ? 'all' : repeatMode === 'all' ? 'one' : 'off';
+                onRepeatModeChange(nextMode);
+              }
+            }}
+            sx={{ 
+              color: repeatMode !== 'off' ? 'primary.main' : 'text.secondary',
+            }}
+            aria-label="repeat"
+          >
+            {repeatMode === 'one' ? (
+              <RepeatOneIcon sx={{ fontSize: 28 }} />
+            ) : (
+              <RepeatIcon sx={{ fontSize: 28 }} />
+            )}
           </IconButton>
         </Box>
 
@@ -462,7 +510,10 @@ const FullPlayer: React.FC<FullPlayerProps> = ({
         loading={suggestionsLoading}
         onSongSelect={(song) => {
           if (onSongSelect) {
-            onSongSelect(song);
+            // When selecting from up next, pass the remaining songs as context
+            const songIndex = upNextSongs.findIndex(s => s.id === song.id);
+            const remainingSongs = songIndex >= 0 ? upNextSongs.slice(songIndex) : [song];
+            onSongSelect(song, remainingSongs);
           }
         }}
       />
