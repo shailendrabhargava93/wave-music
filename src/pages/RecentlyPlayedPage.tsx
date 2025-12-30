@@ -8,7 +8,7 @@ import PlaylistAddIcon from '@mui/icons-material/PlaylistAdd';
 import FavoriteIcon from '@mui/icons-material/Favorite';
 import ClearAllIcon from '@mui/icons-material/ClearAll';
 import { Song } from '../types/api';
-import SongListItem from '../components/SongListItem';
+import SongItem from '../components/SongItem';
 import { FAVOURITE_SONGS_KEY, getMeta, persistFavourites, readFavourites, setMeta } from '../services/storage';
 
 interface RecentlyPlayedPageProps {
@@ -187,13 +187,13 @@ const RecentlyPlayedPage: React.FC<RecentlyPlayedPageProps> = ({ onBack, onSongS
       ) : (
         <List sx={{ px: 2 }}>
           {recentSongs.map((song) => (
-            <SongListItem
+            <SongItem
               key={song.id}
               title={decodeHtmlEntities(song.name)}
               artist={decodeHtmlEntities(song.primaryArtists || 'Unknown Artist')}
-              avatarSrc={getImageUrl(song.image)}
+              imageSrc={getImageUrl(song.image)}
               onClick={() => onSongSelect(song, recentSongs)}
-              secondaryAction={
+              rightContent={
                 <IconButton
                   edge="end"
                   onClick={(e) => handleMenuOpen(e, song)}

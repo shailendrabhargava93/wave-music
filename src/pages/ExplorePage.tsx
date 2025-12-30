@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Box, Typography, Chip, List, ListItem, ListItemAvatar, Avatar, ListItemText, IconButton, CircularProgress, Theme, Container } from '@mui/material';
+import { Box, Typography, Chip, IconButton, CircularProgress } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
-import PlaylistPlayIcon from '@mui/icons-material/PlaylistPlay';
 import { saavnApi } from '../services/saavnApi';
 
 interface ExplorePageProps {
@@ -134,168 +133,219 @@ const ExplorePage: React.FC<ExplorePageProps> = ({ onPlaylistSelect }) => {
     return textarea.value;
   };
 
-  const borderedContainerStyles = (theme: Theme) => ({
-    borderRadius: 3,
-    bgcolor: theme.palette.background.paper,
-    p: { xs: 1, sm: 1.5 },
-  });
-
   return (
-    <Container maxWidth="sm" sx={{ px: { xs: 2, sm: 3 }, pt: 1 }}>
-      <Box sx={{ pb: 14 }}>
-        <Box sx={borderedContainerStyles}>
-          {selectedCategory ? (
-            <>
-              {/* Header */}
-              <Box sx={{ display: 'flex', alignItems: 'center', mb: 1, gap: 1 }}>
-                <IconButton onClick={handleBack}>
-                  <ArrowBackIcon />
-                </IconButton>
-                <Typography variant="h6" sx={{ fontWeight: 600 }}>
-                  {selectedCategory}
-                </Typography>
+    <Box sx={{ pb: 14, minHeight: '100vh', pt: 0 }}>
+      {selectedCategory ? (
+        <>
+          {/* Sticky header - match AllSongsPage style */}
+          <Box
+            sx={(theme) => ({
+              position: 'sticky',
+              top: 0,
+              zIndex: theme.zIndex.appBar,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 1,
+              px: 1.25,
+              py: 0.325,
+              justifyContent: 'flex-start',
+              width: '100%',
+              backgroundColor: theme.palette.background.default,
+              boxShadow: `0 1px 6px ${theme.palette.mode === 'dark' ? 'rgba(0,0,0,0.6)' : 'rgba(0,0,0,0.1)'}`,
+              mt: 0,
+              mb: 1,
+            })}
+          >
+            <IconButton
+              onClick={handleBack}
+              sx={{
+                color: 'text.primary',
+                '&:hover': {
+                  bgcolor: 'action.hover',
+                },
+              }}
+            >
+              <ArrowBackIcon />
+            </IconButton>
+            <Typography variant="h6" sx={{ color: 'text.primary', fontWeight: 600, fontSize: '1.1rem', pl: 0.5 }} noWrap>
+              {selectedCategory}
+            </Typography>
+          </Box>
+
+          <Box sx={{ px: 2, pb: 12 }}>
+            {/* Loading State */}
+            {loading && (
+              <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}>
+                <CircularProgress />
               </Box>
+            )}
 
-              {/* Loading State */}
-              {loading && (
-                <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}>
-                  <CircularProgress />
-                </Box>
-              )}
-
-              {/* Playlists List */}
-              {!loading && playlists.length > 0 && (
-                <List sx={{ px: 0 }}>
-                  {playlists.map((playlist) => (
-                    <ListItem
-                      key={playlist.id}
-                      onClick={() => onPlaylistSelect(playlist.id, decodeHtmlEntities(playlist.name), getImageUrl(playlist.image))}
+            {/* Playlists List */}
+            {!loading && playlists.length > 0 && (
+              <Box>
+                {playlists.map((playlist) => (
+                  <Box
+                    key={playlist.id}
+                    onClick={() => onPlaylistSelect(playlist.id, decodeHtmlEntities(playlist.name), getImageUrl(playlist.image))}
+                    sx={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 1.5,
+                      mb: 1,
+                      p: 0.5,
+                      cursor: 'pointer',
+                      borderRadius: 1,
+                      '&:hover': {
+                        bgcolor: (theme) =>
+                          theme.palette.mode === 'light'
+                            ? 'rgba(0, 188, 212, 0.08)'
+                            : 'rgba(255, 255, 255, 0.05)',
+                      },
+                    }}
+                  >
+                    {/* Image */}
+                    <Box
                       sx={{
+                        width: 56,
+                        height: 56,
                         borderRadius: 1,
-                        mb: 1,
-                        cursor: 'pointer',
-                        '&:hover': {
-                          backgroundColor: 'action.hover',
-                        },
+                        overflow: 'hidden',
+                        flexShrink: 0,
+                        bgcolor: 'action.hover',
                       }}
                     >
-                      <ListItemAvatar>
-                        <Avatar
-                          src={getImageUrl(playlist.image)}
-                          variant="rounded"
-                          sx={{ width: 56, height: 56 }}
-                        >
-                          <PlaylistPlayIcon />
-                        </Avatar>
-                      </ListItemAvatar>
-                      <ListItemText
-                        primary={decodeHtmlEntities(playlist.name)}
-                        secondary={`${playlist.songCount || 0} songs`}
-                        sx={{
-                          ml: 2,
-                          '& .MuiListItemText-primary': {
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis',
-                            whiteSpace: 'nowrap',
-                          },
+                      <img
+                        src={getImageUrl(playlist.image)}
+                        alt={decodeHtmlEntities(playlist.name)}
+                        style={{
+                          width: '100%',
+                          height: '100%',
+                          objectFit: 'cover',
                         }}
                       />
-                    </ListItem>
-                  ))}
-                </List>
-              )}
+                    </Box>
 
-              {/* No Results */}
-              {!loading && playlists.length === 0 && (
-                <Box sx={{ textAlign: 'center', py: 8 }}>
-                  <Typography variant="body1" color="text.secondary">
-                    No playlists found
-                  </Typography>
-                </Box>
-              )}
-            </>
-          ) : (
-            <>
-              {/* Moods & Moments Section */}
-              <Typography variant="h6" sx={{ fontWeight: 'bold', mb: 2, color: 'text.primary' }}>
-                Moods & moments
-              </Typography>
-              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mb: 3 }}>
-                {moods.map((mood) => (
-                  <Box key={mood} sx={{ width: 'calc(50% - 6px)', minWidth: 120, mb: 1 }}>
-                    <Chip
-                      label={mood}
-                      onClick={() => handleCategoryClick(mood)}
-                      size="small"
-                      sx={{
-                        width: '100%',
-                        height: 36,
-                        fontSize: '0.875rem',
-                        fontWeight: 600,
-                        bgcolor: 'background.paper',
-                        color: 'text.primary',
-                        border: (theme) => `1px solid ${theme.palette.primary.main}`,
-                        borderRadius: 2,
-                        justifyContent: 'flex-start',
-                        transition: 'transform 0.15s ease, background-color 0.15s ease',
-                        boxShadow: 'none',
-                        '&:hover': {
-                          transform: 'translateY(-1px)',
-                          bgcolor: (theme) => theme.palette.primary.main,
-                          color: '#fff',
-                        },
-                        '& .MuiChip-label': {
-                          px: 1,
-                          py: 0.25,
-                        },
-                      }}
-                    />
+                    {/* Text Content */}
+                    <Box sx={{ flex: 1, minWidth: 0 }}>
+                      <Typography
+                        variant="body1"
+                        sx={{
+                          color: 'text.primary',
+                          fontWeight: 500,
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap',
+                        }}
+                      >
+                        {decodeHtmlEntities(playlist.name)}
+                      </Typography>
+                      <Typography
+                        variant="body2"
+                        sx={{
+                          color: 'text.secondary',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap',
+                        }}
+                      >
+                        {`${playlist.songCount || 0} songs`}
+                      </Typography>
+                    </Box>
                   </Box>
                 ))}
               </Box>
+            )}
 
-              {/* Genres Section */}
-              <Typography variant="h6" sx={{ fontWeight: 'bold', mb: 2, color: 'text.primary' }}>
-                Genres
-              </Typography>
-              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-                {genres.map((genre) => (
-                  <Box key={genre} sx={{ width: 'calc(50% - 6px)', minWidth: 120, mb: 1 }}>
-                    <Chip
-                      label={genre}
-                      onClick={() => handleCategoryClick(genre)}
-                      size="small"
-                      sx={{
-                        width: '100%',
-                        height: 36,
-                        fontSize: '0.875rem',
-                        fontWeight: 600,
-                        bgcolor: 'background.paper',
-                        color: 'text.primary',
-                        border: (theme) => `1px solid ${theme.palette.primary.main}`,
-                        borderRadius: 2,
-                        justifyContent: 'flex-start',
-                        transition: 'transform 0.15s ease, background-color 0.15s ease',
-                        boxShadow: 'none',
-                        '&:hover': {
-                          transform: 'translateY(-1px)',
-                          bgcolor: (theme) => theme.palette.primary.main,
-                          color: '#fff',
-                        },
-                        '& .MuiChip-label': {
-                          px: 1,
-                          py: 0.25,
-                        },
-                      }}
-                    />
-                  </Box>
-                ))}
+            {/* No Results */}
+            {!loading && playlists.length === 0 && (
+              <Box sx={{ textAlign: 'center', py: 8 }}>
+                <Typography variant="body1" color="text.secondary">
+                  No playlists found
+                </Typography>
               </Box>
-            </>
-          )}
+            )}
+          </Box>
+        </>
+      ) : (
+        <Box sx={{ px: 2, pt: 1, pb: 14 }}>
+          {/* Moods & Moments Section */}
+          <Typography variant="h6" sx={{ fontWeight: 'bold', mb: 2, color: 'text.primary' }}>
+            Moods & moments
+          </Typography>
+          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mb: 3 }}>
+            {moods.map((mood) => (
+              <Box key={mood} sx={{ width: 'calc(50% - 6px)', minWidth: 120, mb: 1 }}>
+                <Chip
+                  label={mood}
+                  onClick={() => handleCategoryClick(mood)}
+                  size="small"
+                  sx={{
+                    width: '100%',
+                    height: 36,
+                    fontSize: '0.875rem',
+                    fontWeight: 600,
+                    bgcolor: 'background.paper',
+                    color: 'text.primary',
+                    border: (theme) => `1px solid ${theme.palette.primary.main}`,
+                    borderRadius: 2,
+                    justifyContent: 'flex-start',
+                    transition: 'transform 0.15s ease, background-color 0.15s ease',
+                    boxShadow: 'none',
+                    '&:hover': {
+                      transform: 'translateY(-1px)',
+                      bgcolor: (theme) => theme.palette.primary.main,
+                      color: '#fff',
+                    },
+                    '& .MuiChip-label': {
+                      px: 1,
+                      py: 0.25,
+                    },
+                  }}
+                />
+              </Box>
+            ))}
+          </Box>
+
+          {/* Genres Section */}
+          <Typography variant="h6" sx={{ fontWeight: 'bold', mb: 2, color: 'text.primary' }}>
+            Genres
+          </Typography>
+          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+            {genres.map((genre) => (
+              <Box key={genre} sx={{ width: 'calc(50% - 6px)', minWidth: 120, mb: 1 }}>
+                <Chip
+                  label={genre}
+                  onClick={() => handleCategoryClick(genre)}
+                  size="small"
+                  sx={{
+                    width: '100%',
+                    height: 36,
+                    fontSize: '0.875rem',
+                    fontWeight: 600,
+                    bgcolor: 'background.paper',
+                    color: 'text.primary',
+                    border: (theme) => `1px solid ${theme.palette.primary.main}`,
+                    borderRadius: 2,
+                    justifyContent: 'flex-start',
+                    transition: 'transform 0.15s ease, background-color 0.15s ease',
+                    boxShadow: 'none',
+                    '&:hover': {
+                      transform: 'translateY(-1px)',
+                      bgcolor: (theme) => theme.palette.primary.main,
+                      color: '#fff',
+                    },
+                    '& .MuiChip-label': {
+                      px: 1,
+                      py: 0.25,
+                    },
+                  }}
+                />
+              </Box>
+            ))}
+          </Box>
         </Box>
-      </Box>
-    </Container>
+      )}
+    </Box>
   );
 };
 

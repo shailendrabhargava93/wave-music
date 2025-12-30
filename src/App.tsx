@@ -1194,6 +1194,7 @@ function App() {
             onSongSelect={handleSongSelect}
             onPlaylistSelect={handlePlaylistSelect}
             onAlbumSelect={handleAlbumSelect}
+            onArtistSelect={handleArtistSelect}
             onPlayNext={handlePlayNext}
             onAddToQueue={handleAddToQueue}
             onShowSnackbar={(msg) => {

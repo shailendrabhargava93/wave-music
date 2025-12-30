@@ -329,6 +329,54 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
             </ListItem>
             
             <Divider />
+
+            <ListItem
+              onClick={handleClearSearchHistory}
+              sx={{
+                py: 2,
+                px: { xs: 2, sm: 3 },
+                cursor: 'pointer',
+                '&:hover': {
+                  bgcolor: 'action.hover'
+                },
+                borderBottom: (theme) => `1px solid ${theme.palette.divider}`
+              }}
+            >
+              <Box 
+                sx={{ 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  gap: 2,
+                  flex: 1,
+                  minWidth: 0
+                }}
+              >
+                <DeleteSweepIcon sx={{ color: 'primary.main' }} />
+                <ListItemText
+                  primary={
+                    <Typography 
+                      variant="body1" 
+                      sx={{ 
+                        fontWeight: 600,
+                        color: 'text.primary'
+                      }}
+                    >
+                      Clear Search History
+                    </Typography>
+                  }
+                  secondary={
+                    <Typography 
+                      variant="body2" 
+                      sx={{ color: 'text.secondary' }}
+                    >
+                      Remove all recent searches
+                    </Typography>
+                  }
+                />
+              </Box>
+            </ListItem>
+            
+            <Divider />
             
             <ListItem
               onClick={handleShare}
@@ -380,54 +428,6 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
               >
                 <ShareIcon fontSize="small" />
               </IconButton>
-            </ListItem>
-            
-            <Divider />
-
-            <ListItem
-              onClick={handleClearSearchHistory}
-              sx={{
-                py: 2,
-                px: { xs: 2, sm: 3 },
-                cursor: 'pointer',
-                '&:hover': {
-                  bgcolor: 'action.hover'
-                },
-                borderBottom: (theme) => `1px solid ${theme.palette.divider}`
-              }}
-            >
-              <Box 
-                sx={{ 
-                  display: 'flex', 
-                  alignItems: 'center', 
-                  gap: 2,
-                  flex: 1,
-                  minWidth: 0
-                }}
-              >
-                <DeleteSweepIcon sx={{ color: 'primary.main' }} />
-                <ListItemText
-                  primary={
-                    <Typography 
-                      variant="body1" 
-                      sx={{ 
-                        fontWeight: 600,
-                        color: 'text.primary'
-                      }}
-                    >
-                      Clear Search History
-                    </Typography>
-                  }
-                  secondary={
-                    <Typography 
-                      variant="body2" 
-                      sx={{ color: 'text.secondary' }}
-                    >
-                      Remove all recent searches
-                    </Typography>
-                  }
-                />
-              </Box>
             </ListItem>
             
             <Divider />

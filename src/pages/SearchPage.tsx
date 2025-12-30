@@ -12,8 +12,6 @@ import {
   CircularProgress,
   Chip,
   IconButton,
-  Tabs,
-  Tab,
   Menu,
   MenuItem,
   ListItemIcon,
@@ -22,12 +20,13 @@ import SearchIcon from '@mui/icons-material/Search';
 import MusicNoteIcon from '@mui/icons-material/MusicNote';
 import PlaylistPlayIcon from '@mui/icons-material/PlaylistPlay';
 import AlbumIcon from '@mui/icons-material/Album';
+import PersonIcon from '@mui/icons-material/Person';
 import ClearIcon from '@mui/icons-material/Clear';
 import HistoryIcon from '@mui/icons-material/History';
 import ClearAllIcon from '@mui/icons-material/ClearAll';
 import MoreVertIcon from '@mui/icons-material/MoreVert';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
-import SongListItem from '../components/SongListItem';
+import SongItem from '../components/SongItem';
 import QueueMusicIcon from '@mui/icons-material/QueueMusic';
 import PlaylistAddIcon from '@mui/icons-material/PlaylistAdd';
 import FavoriteIcon from '@mui/icons-material/Favorite';
@@ -39,12 +38,13 @@ interface SearchPageProps {
   onSongSelect: (song: Song, contextSongs?: Song[]) => void;
   onPlaylistSelect: (playlistId: string, playlistName: string, playlistImage: string) => void;
   onAlbumSelect: (albumId: string, albumName: string, albumImage: string) => void;
+  onArtistSelect?: (artistId: string, artistName: string, artistImage: string) => void;
   onAddToQueue?: (song: Song) => void;
   onPlayNext?: (song: Song) => void;
   onShowSnackbar?: (message: string) => void;
 }
 
-const SearchPage: React.FC<SearchPageProps> = ({ onSongSelect, onPlaylistSelect, onAlbumSelect, onAddToQueue, onPlayNext, onShowSnackbar }) => {
+const SearchPage: React.FC<SearchPageProps> = ({ onSongSelect, onPlaylistSelect, onAlbumSelect, onArtistSelect, onAddToQueue, onPlayNext, onShowSnackbar }) => {
   // Use state that persists in sessionStorage
   const [searchQuery, setSearchQuery] = useState(() => {
     return sessionStorage.getItem('searchQuery') || '';
@@ -59,6 +59,10 @@ const SearchPage: React.FC<SearchPageProps> = ({ onSongSelect, onPlaylistSelect,
   });
   const [albums, setAlbums] = useState<any[]>(() => {
     const saved = sessionStorage.getItem('searchAlbums');
+    return saved ? JSON.parse(saved) : [];
+  });
+  const [artists, setArtists] = useState<any[]>(() => {
+    const saved = sessionStorage.getItem('searchArtists');
     return saved ? JSON.parse(saved) : [];
   });
   const [activeTab, setActiveTab] = useState(0);
@@ -86,6 +90,10 @@ const SearchPage: React.FC<SearchPageProps> = ({ onSongSelect, onPlaylistSelect,
   useEffect(() => {
     sessionStorage.setItem('searchAlbums', JSON.stringify(albums));
   }, [albums]);
+
+  useEffect(() => {
+    sessionStorage.setItem('searchArtists', JSON.stringify(artists));
+  }, [artists]);
 
   useEffect(() => {
     sessionStorage.setItem('hasSearched', hasSearched ? 'true' : 'false');
@@ -144,6 +152,7 @@ const SearchPage: React.FC<SearchPageProps> = ({ onSongSelect, onPlaylistSelect,
       setSongs([]);
       setPlaylists([]);
       setAlbums([]);
+      setArtists([]);
       setHasSearched(false);
       return;
     }
@@ -153,11 +162,12 @@ const SearchPage: React.FC<SearchPageProps> = ({ onSongSelect, onPlaylistSelect,
 
     setLoading(true);
     try {
-      // Call all three APIs in parallel
-      const [songsResponse, playlistsResponse, albumsResponse] = await Promise.all([
+      // Call all APIs in parallel
+      const [songsResponse, playlistsResponse, albumsResponse, artistsResponse] = await Promise.all([
         saavnApi.searchSongs(query, 20),
         saavnApi.searchPlaylists(query, 20),
-        saavnApi.searchAlbums(query, 20)
+        saavnApi.searchAlbums(query, 20),
+        saavnApi.searchArtists(query, 20)
       ]);
       
       // Extract songs from response
@@ -192,14 +202,28 @@ const SearchPage: React.FC<SearchPageProps> = ({ onSongSelect, onPlaylistSelect,
                album.image && 
                album.image.length > 0;
       }).slice(0, 20);
+
+      // Extract artists from response
+      const artistsData = artistsResponse.data?.results || [];
+      
+      const validArtists = artistsData.filter((artist: any) => {
+        return artist && 
+               artist.id && 
+               artist.name && 
+               artist.image && 
+               artist.image.length > 0;
+      }).slice(0, 20);
       
       setSongs(validSongs);
       setPlaylists(validPlaylists);
       setAlbums(validAlbums);
+      setArtists(validArtists);
       setHasSearched(true);
     } catch (error) {
       setSongs([]);
       setPlaylists([]);
+      setAlbums([]);
+      setArtists([]);
       setAlbums([]);
       setHasSearched(true);
     } finally {
@@ -436,40 +460,58 @@ const SearchPage: React.FC<SearchPageProps> = ({ onSongSelect, onPlaylistSelect,
       )}
 
       {/* Tabs for Search Results */}
-      {!loading && hasSearched && (songs.length > 0 || playlists.length > 0 || albums.length > 0) && (
+      {!loading && hasSearched && (songs.length > 0 || playlists.length > 0 || albums.length > 0 || artists.length > 0) && (
         <Box>
-          <Tabs
-            value={activeTab}
-            onChange={(_, newValue) => setActiveTab(newValue)}
-            variant="scrollable"
-            scrollButtons="auto"
-            sx={{
-              borderBottom: 1,
-              borderColor: 'divider',
-              mb: 2,
-              px: 0,
-              '& .MuiTabs-flexContainer': {
-                justifyContent: 'space-between',
-                width: '100%',
-              },
-              '& .MuiTab-root': {
-                textTransform: 'none',
+          <Box sx={{ display: 'flex', gap: 1, mb: 2, justifyContent: 'flex-start' }}>
+            <Chip
+              icon={<MusicNoteIcon />}
+              label="Songs"
+              onClick={() => setActiveTab(0)}
+              variant={activeTab === 0 ? 'filled' : 'outlined'}
+              sx={{
+                bgcolor: activeTab === 0 ? 'primary.main' : 'transparent',
+                color: activeTab === 0 ? 'primary.contrastText' : 'text.primary',
+                borderColor: activeTab === 0 ? 'primary.main' : 'divider',
                 fontWeight: 500,
-                fontSize: '0.9rem',
-                minWidth: 70,
-                minHeight: 42,
-                px: 0.7,
-              },
-              '& .Mui-selected': {
-                color: 'primary.main',
-                fontWeight: 600,
-              },
-            }}
-          >
-            <Tab icon={<MusicNoteIcon />} iconPosition="start" label="Songs" />
-            <Tab icon={<AlbumIcon />} iconPosition="start" label="Albums" />
-            <Tab icon={<PlaylistPlayIcon />} iconPosition="start" label="Playlists" />
-          </Tabs>
+              }}
+            />
+            <Chip
+              icon={<AlbumIcon />}
+              label="Albums"
+              onClick={() => setActiveTab(1)}
+              variant={activeTab === 1 ? 'filled' : 'outlined'}
+              sx={{
+                bgcolor: activeTab === 1 ? 'primary.main' : 'transparent',
+                color: activeTab === 1 ? 'primary.contrastText' : 'text.primary',
+                borderColor: activeTab === 1 ? 'primary.main' : 'divider',
+                fontWeight: 500,
+              }}
+            />
+            <Chip
+              icon={<PlaylistPlayIcon />}
+              label="Playlists"
+              onClick={() => setActiveTab(2)}
+              variant={activeTab === 2 ? 'filled' : 'outlined'}
+              sx={{
+                bgcolor: activeTab === 2 ? 'primary.main' : 'transparent',
+                color: activeTab === 2 ? 'primary.contrastText' : 'text.primary',
+                borderColor: activeTab === 2 ? 'primary.main' : 'divider',
+                fontWeight: 500,
+              }}
+            />
+            <Chip
+              icon={<PersonIcon />}
+              label="Artists"
+              onClick={() => setActiveTab(3)}
+              variant={activeTab === 3 ? 'filled' : 'outlined'}
+              sx={{
+                bgcolor: activeTab === 3 ? 'primary.main' : 'transparent',
+                color: activeTab === 3 ? 'primary.contrastText' : 'text.primary',
+                borderColor: activeTab === 3 ? 'primary.main' : 'divider',
+                fontWeight: 500,
+              }}
+            />
+          </Box>
 
           {/* Songs Tab */}
           {activeTab === 0 && (
@@ -493,14 +535,13 @@ const SearchPage: React.FC<SearchPageProps> = ({ onSongSelect, onPlaylistSelect,
               ) : (
                 <List sx={{ bgcolor: 'transparent', p: 0, pb: 2 }}>
                   {songs.map((song) => (
-                    <SongListItem
+                    <SongItem
                       key={song.id}
                       title={decodeHtmlEntities(song.name)}
                       artist={decodeHtmlEntities(getArtistNames(song))}
-                      
-                      avatarSrc={getHighQualityImage(song.image)}
+                      imageSrc={getHighQualityImage(song.image)}
                       onClick={() => onSongSelect(song, songs)}
-                      secondaryAction={
+                      rightContent={
                         <IconButton
                           edge="end"
                           onClick={(e) => handleMenuOpen(e, song)}
@@ -675,11 +716,95 @@ const SearchPage: React.FC<SearchPageProps> = ({ onSongSelect, onPlaylistSelect,
               )}
             </Box>
           )}
+
+          {/* Artists Tab */}
+          {activeTab === 3 && (
+            <Box>
+              {artists.length === 0 ? (
+                <Box
+                  sx={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    minHeight: '30vh',
+                    gap: 2,
+                  }}
+                >
+                  <PersonIcon sx={{ fontSize: 64, color: 'text.disabled', opacity: 0.3 }} />
+                  <Typography variant="body1" sx={{ color: 'text.secondary' }}>
+                    No artists found
+                  </Typography>
+                </Box>
+              ) : (
+                <List sx={{ bgcolor: 'transparent', p: 0, pb: 2 }}>
+                  {artists.map((artist) => (
+                    <ListItem
+                      key={artist.id}
+                      onClick={() => {
+                        if (onArtistSelect) {
+                          onArtistSelect(artist.id, decodeHtmlEntities(artist.name), getHighQualityImage(artist.image));
+                        }
+                      }}
+                      sx={{
+                        cursor: 'pointer',
+                        borderRadius: 1,
+                        px: 1,
+                        py: 0.5,
+                        mb: 0.5,
+                        '&:hover': {
+                          bgcolor: 'action.hover',
+                        },
+                      }}
+                    >
+                      <ListItemAvatar sx={{ minWidth: 72 }}>
+                        <Avatar
+                          src={getHighQualityImage(artist.image)}
+                          variant="circular"
+                          sx={{ width: 56, height: 56 }}
+                        >
+                          <PersonIcon />
+                        </Avatar>
+                      </ListItemAvatar>
+                      <ListItemText
+                        primary={
+                          <Typography
+                            sx={{
+                              color: 'text.primary',
+                              fontWeight: 500,
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              whiteSpace: 'nowrap',
+                            }}
+                          >
+                            {decodeHtmlEntities(artist.name)}
+                          </Typography>
+                        }
+                        secondary={
+                          <Typography
+                            variant="body2"
+                            sx={{
+                              color: 'text.secondary',
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              whiteSpace: 'nowrap',
+                            }}
+                          >
+                            Artist
+                          </Typography>
+                        }
+                      />
+                    </ListItem>
+                  ))}
+                </List>
+              )}
+            </Box>
+          )}
         </Box>
       )}
 
       {/* No Results */}
-      {!loading && hasSearched && songs.length === 0 && playlists.length === 0 && albums.length === 0 && (
+      {!loading && hasSearched && songs.length === 0 && playlists.length === 0 && albums.length === 0 && artists.length === 0 && (
         <Box
           sx={{
             display: 'flex',

@@ -12,7 +12,7 @@ import {
 } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import MusicNoteIcon from '@mui/icons-material/MusicNote';
-import SongListItem from '../components/SongListItem';
+import SongItem from '../components/SongItem';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import FavoriteBorderIcon from '@mui/icons-material/FavoriteBorder';
 import FavoriteIcon from '@mui/icons-material/Favorite';
@@ -302,7 +302,7 @@ const PlaylistPage: React.FC<PlaylistPageProps> = ({
   
 
   return (
-    <Box sx={{ pb: 14, minHeight: '100vh', pt: 0 }}>
+    <Box sx={{ pb: 14, minHeight: '100vh', pt: 0, px: { xs: 2, sm: 3 } }}>
       {/* Sticky header with back button and playlist name */}
       <Box
         sx={(theme) => ({
@@ -470,14 +470,13 @@ const PlaylistPage: React.FC<PlaylistPageProps> = ({
         <Box sx={{ px: 1 }}>
           <List sx={{ bgcolor: 'transparent', p: 0 }}>
             {songs.map((song, index) => (
-              <SongListItem
+              <SongItem
                 key={song.id || index}
                 title={decodeHtmlEntities(song.name)}
                 artist={decodeHtmlEntities(getArtistNames(song))}
-                
-                avatarSrc={getHighQualityImage(song.image)}
+                imageSrc={getHighQualityImage(song.image)}
                 onClick={() => onSongSelect(song, songs)}
-                secondaryAction={
+                rightContent={
                   <IconButton
                     edge="end"
                     onClick={(e) => handleMenuOpen(e, song)}

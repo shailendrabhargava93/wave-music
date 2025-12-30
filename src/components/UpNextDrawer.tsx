@@ -10,7 +10,7 @@ import {
 import CloseIcon from '@mui/icons-material/Close';
 import MusicNoteIcon from '@mui/icons-material/MusicNote';
 import { Song } from '../types/api';
-import SongListItem from './SongListItem';
+import SongItem from './SongItem';
 
 interface UpNextDrawerProps {
   open: boolean;
@@ -67,12 +67,12 @@ const UpNextDrawer: React.FC<UpNextDrawerProps> = ({
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
-          p: 2,
+          p: 1,
           borderBottom: '1px solid',
           borderColor: 'divider',
         }}
       >
-        <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
+        <Typography variant="subtitle1" sx={{ fontWeight: 700, fontSize: '0.95rem' }}>
           Up Next
         </Typography>
         <IconButton
@@ -81,7 +81,7 @@ const UpNextDrawer: React.FC<UpNextDrawerProps> = ({
           sx={{ color: 'text.secondary' }}
           aria-label="close"
         >
-          <CloseIcon />
+          <CloseIcon fontSize="small" />
         </IconButton>
       </Box>
 
@@ -109,7 +109,7 @@ const UpNextDrawer: React.FC<UpNextDrawerProps> = ({
         {!loading && suggestions.length > 0 && (
           <List sx={{ p: 0 }}>
             {suggestions.filter((song) => song && song.id).map((song, index) => (
-              <SongListItem
+              <SongItem
                 key={song.id || index}
                 title={song.name || 'Unknown Song'}
                 artist={(() => {
@@ -119,7 +119,7 @@ const UpNextDrawer: React.FC<UpNextDrawerProps> = ({
                   }
                   return song.primaryArtists || 'Unknown Artist';
                 })()}
-                avatarSrc={song.image ? getHighQualityImage(song.image) : ''}
+                imageSrc={song.image ? getHighQualityImage(song.image) : ''}
                 onClick={() => handleSongClick(song)}
               />
             ))}

@@ -8,8 +8,7 @@ import {
   ListItemText,
   Avatar,
   IconButton,
-  Tabs,
-  Tab,
+  Chip,
   Menu,
   MenuItem,
   ListItemIcon,
@@ -22,7 +21,7 @@ import PlaylistPlayIcon from '@mui/icons-material/PlaylistPlay';
 import PersonIcon from '@mui/icons-material/Person';
 import MoreVertIcon from '@mui/icons-material/MoreVert';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
-import SongListItem from '../components/SongListItem';
+import SongItem from '../components/SongItem';
 import {
   FAVOURITE_ALBUMS_KEY,
   FAVOURITE_PLAYLISTS_KEY,
@@ -266,39 +265,56 @@ const FavouritesPage: React.FC<FavouritesPageProps> = ({ onSongSelect, onAlbumSe
           </Box>
 
           {/* Tabs */}
-          <Tabs
-            value={activeTab}
-            onChange={(_, newValue) => setActiveTab(newValue)}
-            variant="scrollable"
-            scrollButtons="auto"
-            sx={{
-              borderBottom: 1,
-              borderColor: 'divider',
-              mb: 2,
-              px: 0,
-              '& .MuiTabs-flexContainer': {
-                justifyContent: 'space-between',
-                width: '100%',
-              },
-              '& .MuiTab-root': {
-                textTransform: 'none',
+          <Box sx={{ display: 'flex', gap: 1, mb: 2, justifyContent: 'flex-start' }}>
+            <Chip
+              icon={<MusicNoteIcon />}
+              label="Songs"
+              onClick={() => setActiveTab(0)}
+              variant={activeTab === 0 ? 'filled' : 'outlined'}
+              sx={{
+                bgcolor: activeTab === 0 ? 'primary.main' : 'transparent',
+                color: activeTab === 0 ? 'primary.contrastText' : 'text.primary',
+                borderColor: activeTab === 0 ? 'primary.main' : 'divider',
                 fontWeight: 500,
-                fontSize: '0.95rem',
-                minWidth: 70,
-                minHeight: 42,
-                px: 0.8,
-              },
-              '& .Mui-selected': {
-                color: 'primary.main',
-                fontWeight: 600,
-              },
-            }}
-          >
-            <Tab icon={<MusicNoteIcon />} iconPosition="start" label="Songs" />
-            <Tab icon={<AlbumIcon />} iconPosition="start" label="Albums" />
-            <Tab icon={<PlaylistPlayIcon />} iconPosition="start" label="Playlists" />
-            <Tab icon={<PersonIcon />} iconPosition="start" label="Artists" />
-          </Tabs>
+              }}
+            />
+            <Chip
+              icon={<AlbumIcon />}
+              label="Albums"
+              onClick={() => setActiveTab(1)}
+              variant={activeTab === 1 ? 'filled' : 'outlined'}
+              sx={{
+                bgcolor: activeTab === 1 ? 'primary.main' : 'transparent',
+                color: activeTab === 1 ? 'primary.contrastText' : 'text.primary',
+                borderColor: activeTab === 1 ? 'primary.main' : 'divider',
+                fontWeight: 500,
+              }}
+            />
+            <Chip
+              icon={<PlaylistPlayIcon />}
+              label="Playlists"
+              onClick={() => setActiveTab(2)}
+              variant={activeTab === 2 ? 'filled' : 'outlined'}
+              sx={{
+                bgcolor: activeTab === 2 ? 'primary.main' : 'transparent',
+                color: activeTab === 2 ? 'primary.contrastText' : 'text.primary',
+                borderColor: activeTab === 2 ? 'primary.main' : 'divider',
+                fontWeight: 500,
+              }}
+            />
+            <Chip
+              icon={<PersonIcon />}
+              label="Artists"
+              onClick={() => setActiveTab(3)}
+              variant={activeTab === 3 ? 'filled' : 'outlined'}
+              sx={{
+                bgcolor: activeTab === 3 ? 'primary.main' : 'transparent',
+                color: activeTab === 3 ? 'primary.contrastText' : 'text.primary',
+                borderColor: activeTab === 3 ? 'primary.main' : 'divider',
+                fontWeight: 500,
+              }}
+            />
+          </Box>
         </Box>
 
         {/* Songs Tab */}
@@ -325,16 +341,15 @@ const FavouritesPage: React.FC<FavouritesPageProps> = ({ onSongSelect, onAlbumSe
                 </Typography>
               </Box>
             ) : (
-              <List sx={{ px: 0 }}>
+              <List sx={{ px: 2 }}>
                 {favourites.map((song) => (
-                  <SongListItem
+                  <SongItem
                     key={song.id}
                     title={decodeHtmlEntities(song.name)}
                     artist={decodeHtmlEntities(song.artist)}
-                    
-                    avatarSrc={song.albumArt || ''}
+                    imageSrc={song.albumArt || ''}
                     onClick={() => onSongSelect(song.id)}
-                    secondaryAction={
+                    rightContent={
                       <IconButton
                         edge="end"
                         onClick={(e) => handleMenuOpen(e, song)}
@@ -374,7 +389,7 @@ const FavouritesPage: React.FC<FavouritesPageProps> = ({ onSongSelect, onAlbumSe
                 </Typography>
               </Box>
             ) : (
-                <List sx={{ px: 0 }}>
+                <List sx={{ px: 2 }}>
                 {favouriteAlbums.map((album) => (
                   <ListItem
                     key={album.id}
