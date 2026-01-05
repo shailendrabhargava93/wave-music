@@ -1278,6 +1278,7 @@ function App() {
                 onPreviousSong={handlePreviousSong}
                 onSongSelect={handleSongSelect}
                 songQueue={songQueue}
+                currentContextSongs={currentContextSongs}
                 progress={songProgress}
                 onProgressChange={handleProgressSeek}
                 repeatMode={repeatMode}

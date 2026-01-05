@@ -44,6 +44,7 @@ interface FullPlayerProps {
   onPreviousSong?: () => void;
   onSongSelect?: (song: Song, contextSongs?: Song[]) => void;
   songQueue?: Song[];
+  currentContextSongs?: Song[];
   progress?: number;
   onProgressChange?: (progress: number) => void;
   repeatMode?: 'off' | 'all' | 'one';
@@ -75,6 +76,7 @@ const FullPlayer: React.FC<FullPlayerProps> = ({
   onPreviousSong,
   onSongSelect,
   songQueue = [],
+  currentContextSongs = [],
   progress: externalProgress = 0,
   onProgressChange,
   repeatMode = 'off',
@@ -98,7 +100,20 @@ const FullPlayer: React.FC<FullPlayerProps> = ({
   const [suggestionsLoading, setSuggestionsLoading] = useState(false);
 
   // Merge queue with suggestions for Up Next display
-  const upNextSongs = [...songQueue, ...suggestions];
+  // Merge queue with suggestions for Up Next display and dedupe by id (keep first occurrence)
+  const upNextSongs = (() => {
+    const mergedSource = (currentContextSongs && currentContextSongs.length > 0) ? currentContextSongs : [...songQueue, ...suggestions];
+    const merged = [...mergedSource];
+    const seen = new Set<string>();
+    const out: Song[] = [];
+    for (const s of merged) {
+      if (!s || !s.id) continue;
+      if (seen.has(s.id)) continue;
+      seen.add(s.id);
+      out.push(s);
+    }
+    return out;
+  })();
   const currentProgress = Math.min(externalProgress ?? 0, duration ?? 0);
 
   // Decode HTML entities in strings
@@ -127,23 +142,32 @@ const FullPlayer: React.FC<FullPlayerProps> = ({
 
   // Fetch album songs when song changes (for Up Next)
   useEffect(() => {
+    let isMounted = true;
+    const lastFetchedAlbumRef: { current?: string | undefined } = { current: undefined };
+
     const fetchAlbumSongs = async () => {
       if (!albumId || !songId) {
         setSuggestions([]);
         return;
       }
-      
+
+      // If we've already fetched for this albumId, skip to avoid duplicate requests
+      if (lastFetchedAlbumRef.current === albumId) return;
+      lastFetchedAlbumRef.current = albumId;
+
       try {
         setSuggestionsLoading(true);
         const response = await saavnApi.getAlbumById(albumId);
-        
+
+        if (!isMounted) return;
+
         if (response?.success && response.data?.songs && Array.isArray(response.data.songs)) {
           const albumSongs = response.data.songs;
           // Filter out current song and take up to 5 songs
           const otherSongs = albumSongs
             .filter((song: any) => song && song.id && song.name && song.id !== songId)
             .slice(0, 5);
-          
+
           setSuggestions(otherSongs);
         } else {
           setSuggestions([]);
@@ -151,7 +175,7 @@ const FullPlayer: React.FC<FullPlayerProps> = ({
       } catch (error) {
         setSuggestions([]);
       } finally {
-        setSuggestionsLoading(false);
+        if (isMounted) setSuggestionsLoading(false);
       }
     };
 
@@ -508,15 +532,19 @@ const FullPlayer: React.FC<FullPlayerProps> = ({
       <UpNextDrawer
         open={upNextOpen}
         onClose={() => setUpNextOpen(false)}
-        suggestions={upNextSongs}
+        items={upNextSongs}
         loading={suggestionsLoading}
+        currentSongId={songId}
         onSongSelect={(song) => {
           if (onSongSelect) {
-            // When selecting from up next, pass the remaining songs as context
-            const songIndex = upNextSongs.findIndex(s => s.id === song.id);
-            const remainingSongs = songIndex >= 0 ? upNextSongs.slice(songIndex) : [song];
+            const merged = [...songQueue, ...suggestions];
+            const songIndex = merged.findIndex(s => s.id === song.id);
+            const remainingSongs = songIndex >= 0 ? merged.slice(songIndex) : [song];
             onSongSelect(song, remainingSongs);
           }
+        }}
+        onReorder={(newOrder) => {
+          // Parent `App` should wire this to actually persist reordered queue.
         }}
       />
 

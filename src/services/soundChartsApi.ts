@@ -43,23 +43,39 @@ export const soundChartsApi = {
    */
   getTopSongs: async (offset: number = 0, limit: number = 10): Promise<SoundChartsResponse> => {
     try {
-      const response = await fetch(
-        `${BASE_URL}/chart/song/top-songs-29/ranking/latest?offset=${offset}&limit=${limit}`,
-        {
-          headers: {
-            'x-app-id': APP_ID,
-            'x-api-key': API_KEY,
-          },
+      // Use a simple global in-flight map to dedupe concurrent SoundCharts requests
+      const globalAny: any = globalThis as any;
+      if (!globalAny.__soundcharts_inflight) globalAny.__soundcharts_inflight = new Map<string, Promise<any>>();
+      const inflight: Map<string, Promise<any>> = globalAny.__soundcharts_inflight;
+      const key = `${offset}:${limit}`;
+      if (inflight.has(key)) return await inflight.get(key)!;
+
+      const promise = (async () => {
+        const response = await fetch(
+          `${BASE_URL}/chart/song/top-songs-29/ranking/latest?offset=${offset}&limit=${limit}`,
+          {
+            headers: {
+              'x-app-id': APP_ID,
+              'x-api-key': API_KEY,
+            },
+          }
+        );
+
+        if (!response.ok) {
+          throw new Error(`SoundCharts API error: ${response.status}`);
         }
-      );
 
-      if (!response.ok) {
-        throw new Error(`SoundCharts API error: ${response.status}`);
+        const data = await response.json();
+        return data;
+      })();
+
+      inflight.set(key, promise);
+      try {
+        const res = await promise;
+        return res;
+      } finally {
+        inflight.delete(key);
       }
-
-      const data = await response.json();
-      
-      return data;
     } catch (error) {
       console.error('Error fetching top songs from SoundCharts:', error);
       throw error;
