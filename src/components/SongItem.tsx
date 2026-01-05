@@ -1,5 +1,6 @@
 import React from 'react';
 import { Box, Typography } from '@mui/material';
+import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 
 interface SongItemProps {
   title: string;
@@ -7,6 +8,8 @@ interface SongItemProps {
   imageSrc?: string;
   onClick?: () => void;
   rightContent?: React.ReactNode;
+  highlight?: boolean;
+  playing?: boolean;
 }
 
 const SongItem: React.FC<SongItemProps> = ({
@@ -15,10 +18,13 @@ const SongItem: React.FC<SongItemProps> = ({
   imageSrc,
   onClick,
   rightContent,
+  highlight = false,
+  playing = false,
 }) => {
   return (
     <Box
       onClick={onClick}
+      aria-current={playing ? 'true' : undefined}
       sx={{
         display: 'flex',
         alignItems: 'center',
@@ -28,15 +34,21 @@ const SongItem: React.FC<SongItemProps> = ({
         borderRadius: 1,
         cursor: onClick ? 'pointer' : 'default',
         transition: 'background-color 0.2s',
+        backgroundColor: highlight ? (theme) => theme.palette.action.selected : 'transparent',
         '&:hover': onClick ? {
           backgroundColor: (theme) => 
-            theme.palette.mode === 'light'
+            highlight ? theme.palette.action.selected : (theme.palette.mode === 'light'
               ? 'rgba(0, 188, 212, 0.08)'
-              : 'rgba(255, 255, 255, 0.05)',
+              : 'rgba(255, 255, 255, 0.05)') ,
         } : {},
       }}
     >
-      <Box
+      {playing ? (
+        <Box sx={{ width: 28, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'primary.main' }}>
+          <PlayArrowIcon fontSize="small" />
+        </Box>
+      ) : (
+        <Box
         sx={{
           width: 56,
           height: 56,
@@ -61,6 +73,8 @@ const SongItem: React.FC<SongItemProps> = ({
           </Typography>
         )}
       </Box>
+
+      )}
 
       <Box sx={{ flex: 1, minWidth: 0 }}>
         <Typography

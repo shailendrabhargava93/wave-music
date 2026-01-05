@@ -205,7 +205,7 @@ export async function migrateLocalStorage() {
     },
     {
       localKey: 'latestAlbums',
-      metaKey: 'latestAlbums',
+      metaKey: 'newAlbums',
       parser: value => {
         try {
           const parsed = JSON.parse(value);
@@ -218,7 +218,7 @@ export async function migrateLocalStorage() {
     },
     {
       localKey: 'latestAlbumsTimestamp',
-      metaKey: 'latestAlbumsTimestamp',
+      metaKey: 'newAlbumsTimestamp',
       parser: value => {
         const parsed = Number(value);
         return Number.isFinite(parsed) ? parsed : null;

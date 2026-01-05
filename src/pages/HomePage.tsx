@@ -47,10 +47,12 @@ interface ChartSongWithSaavn extends SoundChartsItem {
 }
 
 const CACHE_DURATION_MS = 24 * 60 * 60 * 1000;
-const LATEST_ALBUMS_KEY = 'latestAlbums';
-const LATEST_ALBUMS_TIMESTAMP_KEY = 'latestAlbumsTimestamp';
+const NEW_ALBUMS_KEY = 'newAlbums';
+const NEW_ALBUMS_TIMESTAMP_KEY = 'newAlbumsTimestamp';
 const TRENDING_PLAYLISTS_KEY = 'trendingPlaylists';
 const TRENDING_PLAYLISTS_TIMESTAMP_KEY = 'trendingPlaylistsTimestamp';
+const TOP_CHARTS_KEY = 'topCharts';
+const TOP_CHARTS_TIMESTAMP_KEY = 'topChartsTimestamp';
 const TOP_ARTISTS_QUERY = 'latest';
 const TOP_ARTISTS_LIMIT = 12;
 const TOP_ARTISTS_SEARCH_LIMIT = 30;
@@ -141,6 +143,9 @@ const HomePage: React.FC<HomePageProps> = ({
   const [trendingPlaylists, setTrendingPlaylists] = useState<any[]>([]);
   const [playlistsLoading, setPlaylistsLoading] = useState(true);
   const [playlistsFetched, setPlaylistsFetched] = useState(false);
+  const [topCharts, setTopCharts] = useState<any[]>([]);
+  const [topChartsLoading, setTopChartsLoading] = useState(true);
+  const [topChartsFetched, setTopChartsFetched] = useState(false);
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [selectedSong, setSelectedSong] = useState<ChartSongWithSaavn | null>(null);
   const [favouriteSongs, setFavouriteSongs] = useState<string[]>([]);
@@ -148,89 +153,157 @@ const HomePage: React.FC<HomePageProps> = ({
   const [topArtistsLoading, setTopArtistsLoading] = useState(false);
   const [topArtistsError, setTopArtistsError] = useState<string | null>(null);
 
-  // Fetch latest albums only once
+  // Fetch latest albums and trending playlists using the launch API
   useEffect(() => {
-    const fetchLatestAlbums = async () => {
-      if (albumsFetched) return; // Skip if already fetched
-      
+    const fetchLaunchData = async () => {
       try {
+        // Albums
         setAlbumsLoading(true);
-        const cachedData = await getMeta(LATEST_ALBUMS_KEY);
-        const cacheTimestamp = await getMeta(LATEST_ALBUMS_TIMESTAMP_KEY);
-        const parsedTimestamp =
-          typeof cacheTimestamp === 'number'
-            ? cacheTimestamp
-            : Number(cacheTimestamp);
-        
-        if (
-          Array.isArray(cachedData) &&
-          Number.isFinite(parsedTimestamp) &&
-          Date.now() - parsedTimestamp < CACHE_DURATION_MS
-        ) {
-          setLatestAlbums(cachedData);
-          setAlbumsFetched(true);
-          return;
-        }
-        
-        const response = await saavnApi.searchAlbums('latest', 10);
-        if (response?.data?.results) {
-          const albums = response.data.results.slice(0, 10);
-          setLatestAlbums(albums);
-          setAlbumsFetched(true);
-          await setMeta(LATEST_ALBUMS_KEY, albums);
-          await setMeta(LATEST_ALBUMS_TIMESTAMP_KEY, Date.now());
-        }
-      } catch (error) {
-        console.warn('Failed to load latest albums', error);
-      } finally {
-        setAlbumsLoading(false);
-      }
-    };
+        const cachedAlbums = await getMeta(NEW_ALBUMS_KEY);
+        const cachedAlbumsTimestamp = await getMeta(NEW_ALBUMS_TIMESTAMP_KEY);
+        const parsedAlbumsTimestamp = typeof cachedAlbumsTimestamp === 'number' ? cachedAlbumsTimestamp : Number(cachedAlbumsTimestamp);
 
-    fetchLatestAlbums();
-  }, [albumsFetched]);
+        const albumsCacheValid =
+          Array.isArray(cachedAlbums) &&
+          Number.isFinite(parsedAlbumsTimestamp) &&
+          Date.now() - parsedAlbumsTimestamp < CACHE_DURATION_MS;
 
-  // Fetch trending playlists only once
-  useEffect(() => {
-    const fetchTrendingPlaylists = async () => {
-      if (playlistsFetched) return;
-      
-      try {
+        if (albumsCacheValid) {
+          setLatestAlbums(cachedAlbums);
+          setAlbumsFetched(true);
+        }
+
+        // Playlists
         setPlaylistsLoading(true);
-        const cachedData = await getMeta(TRENDING_PLAYLISTS_KEY);
-        const cacheTimestamp = await getMeta(TRENDING_PLAYLISTS_TIMESTAMP_KEY);
-        const parsedTimestamp =
-          typeof cacheTimestamp === 'number'
-            ? cacheTimestamp
-            : Number(cacheTimestamp);
-        
-        if (
-          Array.isArray(cachedData) &&
-          Number.isFinite(parsedTimestamp) &&
-          Date.now() - parsedTimestamp < CACHE_DURATION_MS
-        ) {
-          setTrendingPlaylists(cachedData);
+        // Top Charts
+        setTopChartsLoading(true);
+        const cachedTopCharts = await getMeta(TOP_CHARTS_KEY);
+        const cachedTopChartsTimestamp = await getMeta(TOP_CHARTS_TIMESTAMP_KEY);
+        const parsedTopChartsTimestamp = typeof cachedTopChartsTimestamp === 'number' ? cachedTopChartsTimestamp : Number(cachedTopChartsTimestamp);
+
+        const chartsCacheValid =
+          Array.isArray(cachedTopCharts) &&
+          Number.isFinite(parsedTopChartsTimestamp) &&
+          Date.now() - parsedTopChartsTimestamp < CACHE_DURATION_MS;
+
+        if (chartsCacheValid) {
+          setTopCharts(cachedTopCharts);
+          setTopChartsFetched(true);
+        }
+        const cachedPlaylists = await getMeta(TRENDING_PLAYLISTS_KEY);
+        const cachedPlaylistsTimestamp = await getMeta(TRENDING_PLAYLISTS_TIMESTAMP_KEY);
+        const parsedPlaylistsTimestamp = typeof cachedPlaylistsTimestamp === 'number' ? cachedPlaylistsTimestamp : Number(cachedPlaylistsTimestamp);
+
+        const playlistsCacheValid =
+          Array.isArray(cachedPlaylists) &&
+          Number.isFinite(parsedPlaylistsTimestamp) &&
+          Date.now() - parsedPlaylistsTimestamp < CACHE_DURATION_MS;
+
+        if (playlistsCacheValid) {
+          setTrendingPlaylists(cachedPlaylists);
           setPlaylistsFetched(true);
+        }
+
+        // If albums, playlists and charts are all cached and valid, skip network call
+        if (albumsCacheValid && playlistsCacheValid && chartsCacheValid) {
           return;
         }
-        
-        const response = await saavnApi.searchPlaylists('2025', 10);
-        if (response?.data?.results) {
-          const playlists = response.data.results.slice(0, 10);
-          setTrendingPlaylists(playlists);
+
+        // Call launch endpoint
+        const launchResp = await saavnApi.launch();
+        const payload = launchResp?.data ?? launchResp ?? {};
+
+        // Helper to convert single image URL into the array format expected by getHighQualityImage
+        const normalizeImage = (img: any) => {
+          if (!img) return [];
+          if (Array.isArray(img)) return img;
+          if (typeof img === 'string') return [{ link: img }];
+          return [];
+        };
+
+        // Map a launch album/play object to the shape HomePage expects
+        const mapAlbum = (item: any) => {
+          const name = item.title ?? item.name ?? '';
+          const image = normalizeImage(item.image ?? item.images ?? item.imageUrl);
+          const primaryArtist = item.more_info?.artistMap?.artists?.[0]?.name || item.more_info?.artistMap?.primary_artists?.[0]?.name || item.subtitle || '';
+          return {
+            id: item.id,
+            name,
+            image,
+            artists: { primary: [{ name: primaryArtist }] },
+            // keep original for any other fallbacks
+            _raw: item,
+          };
+        };
+
+        const mapPlaylist = (item: any) => {
+          const name = item.title ?? item.name ?? '';
+          const image = normalizeImage(item.image ?? item.images ?? item.imageUrl);
+          return {
+            id: item.id,
+            name,
+            image,
+            _raw: item,
+          };
+        };
+
+        // Use launch payload arrays directly — do not filter, merge, or deduplicate.
+        const albumsSource: any[] = Array.isArray(payload.new_albums) ? payload.new_albums : [];
+        const playlistsSource: any[] = Array.isArray(payload.top_playlists) ? payload.top_playlists : [];
+        const chartsSource: any[] = Array.isArray(payload.top_charts)
+          ? payload.top_charts
+          : Array.isArray(payload.charts)
+          ? payload.charts
+          : Array.isArray(payload.top_songs)
+          ? payload.top_songs
+          : [];
+
+        const albumsMapped = albumsSource.map(mapAlbum);
+        const playlistsMapped = playlistsSource.map(mapPlaylist);
+        const chartsMapped = chartsSource.map((item: any) => {
+          const name = item.title ?? item.name ?? item.song ?? item.trackName ?? '';
+          const image = normalizeImage(item.image ?? item.images ?? item.imageUrl ?? item.thumbnail ?? item.cover);
+          const primaryArtist = item.more_info?.artistMap?.artists?.[0]?.name || item.more_info?.artistMap?.primary_artists?.[0]?.name || item.subtitle || item.artist || '';
+          return {
+            id: item.id || item.songId || item.trackId || item.sid || name,
+            name,
+            image,
+            artists: { primary: [{ name: primaryArtist }] },
+            _raw: item,
+          };
+        });
+
+        if (albumsMapped.length > 0 && !albumsFetched) {
+          setLatestAlbums(albumsMapped);
+          setAlbumsFetched(true);
+          await setMeta(NEW_ALBUMS_KEY, albumsMapped);
+          await setMeta(NEW_ALBUMS_TIMESTAMP_KEY, Date.now());
+        }
+
+        if (playlistsMapped.length > 0 && !playlistsFetched) {
+          setTrendingPlaylists(playlistsMapped);
           setPlaylistsFetched(true);
-          await setMeta(TRENDING_PLAYLISTS_KEY, playlists);
+          await setMeta(TRENDING_PLAYLISTS_KEY, playlistsMapped);
           await setMeta(TRENDING_PLAYLISTS_TIMESTAMP_KEY, Date.now());
         }
+
+        if (chartsMapped.length > 0 && !topChartsFetched) {
+          setTopCharts(chartsMapped);
+          setTopChartsFetched(true);
+          await setMeta(TOP_CHARTS_KEY, chartsMapped);
+          await setMeta(TOP_CHARTS_TIMESTAMP_KEY, Date.now());
+        }
       } catch (error) {
-        console.warn('Failed to load trending playlists', error);
+        console.warn('Failed to load launch data', error);
       } finally {
+        setAlbumsLoading(false);
         setPlaylistsLoading(false);
+        setTopChartsLoading(false);
       }
     };
 
-    fetchTrendingPlaylists();
-  }, [playlistsFetched]);
+    fetchLaunchData();
+  }, []);
 
   // Update displayed songs - show only first 10 on home page
   useEffect(() => {
@@ -414,13 +487,19 @@ const HomePage: React.FC<HomePageProps> = ({
         {/* Latest Albums Section */}
         <Box sx={{ mb: 3 }}>
           <Typography variant="h6" sx={{ color: 'text.secondary', mb: 1.5, fontWeight: 500 }}>
-            Latest Albums
+            New Albums
           </Typography>
 
           {albumsLoading ? (
-            <Box sx={{ display: 'flex', justifyContent: 'center', py: 3 }}>
-              <CircularProgress size={32} sx={{ color: 'primary.main' }} />
-            </Box>
+              <Box sx={{ display: 'flex', gap: 2, pb: 2, overflowX: 'auto' }}>
+                {[...Array(6)].map((_, idx) => (
+                  <Box key={idx} sx={{ minWidth: 140, maxWidth: 140 }}>
+                    <Skeleton variant="rounded" width={140} height={140} sx={{ mb: 1 }} />
+                    <Skeleton variant="text" width="80%" sx={{ mb: 0.5 }} />
+                    <Skeleton variant="text" width="60%" />
+                  </Box>
+                ))}
+              </Box>
           ) : (
             <Box
               sx={{
@@ -469,6 +548,11 @@ const HomePage: React.FC<HomePageProps> = ({
                       textOverflow: 'ellipsis',
                       whiteSpace: 'nowrap',
                       color: 'text.primary',
+                      fontSize: {
+                        xs: '0.78rem',
+                        sm: '0.9rem',
+                        md: '1rem',
+                      },
                     }}
                   >
                     {album.name}
@@ -481,9 +565,122 @@ const HomePage: React.FC<HomePageProps> = ({
                       textOverflow: 'ellipsis',
                       whiteSpace: 'nowrap',
                       display: 'block',
+                      fontSize: {
+                        xs: '0.65rem',
+                        sm: '0.75rem',
+                        md: '0.8rem',
+                      },
                     }}
                   >
                     {album.artists?.primary?.[0]?.name || 'Various Artists'}
+                  </Typography>
+                </Box>
+              ))}
+            </Box>
+          )}
+        </Box>
+
+        {/* Top Charts Section */}
+        <Box sx={{ mb: 4 }}>
+          <Typography variant="h6" sx={{ color: 'text.secondary', mb: 1.5, fontWeight: 500 }}>
+            Top Charts
+          </Typography>
+
+          {topChartsLoading ? (
+            <Box sx={{ display: 'flex', gap: 2, pb: 2, overflowX: 'auto' }}>
+              {[...Array(6)].map((_, idx) => (
+                <Box key={idx} sx={{ minWidth: 140, maxWidth: 140 }}>
+                  <Skeleton variant="rounded" width={140} height={140} sx={{ mb: 1 }} />
+                  <Skeleton variant="text" width="80%" />
+                </Box>
+              ))}
+            </Box>
+          ) : (
+            <Box
+              sx={{
+                display: 'flex',
+                gap: 2,
+                overflowX: 'auto',
+                pb: 2,
+                scrollbarWidth: 'none',
+                msOverflowStyle: 'none',
+                '&::-webkit-scrollbar': {
+                  display: 'none',
+                },
+              }}
+            >
+              {topCharts.map((chart) => (
+                <Box
+                  key={chart.id}
+                  onClick={() => {
+                    // If chart item has song id, attempt to play first song via onSongSelect
+                    const songCandidate = chart._raw?.song || chart._raw?.track || chart._raw?.songId || chart._raw?.trackId;
+                    // Fallback: if there's a playlist id, open playlist
+                    if (chart._raw?.type === 'playlist' && chart.id && onPlaylistSelect) {
+                      onPlaylistSelect(chart.id, chart.name, getHighQualityImage(chart.image));
+                      return;
+                    }
+                    // Otherwise, just call album select if album present
+                    if (chart._raw?.type === 'album' && chart.id && onAlbumSelect) {
+                      onAlbumSelect(chart.id, chart.name, getHighQualityImage(chart.image));
+                      return;
+                    }
+                  }}
+                  sx={{
+                    minWidth: 140,
+                    maxWidth: 140,
+                    cursor: 'pointer',
+                    transition: 'transform 0.2s',
+                    '&:hover': {
+                      transform: 'scale(1.05)',
+                    },
+                  }}
+                >
+                  <Avatar
+                    src={getHighQualityImage(chart.image)}
+                    variant="rounded"
+                    sx={{
+                      width: 140,
+                      height: 140,
+                      mb: 1,
+                      boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)',
+                    }}
+                  >
+                    <MusicNoteIcon sx={{ fontSize: 60 }} />
+                  </Avatar>
+                  <Typography
+                    variant="body2"
+                    sx={{
+                      fontWeight: 600,
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      whiteSpace: 'nowrap',
+                      color: 'text.primary',
+                      fontSize: {
+                        xs: '0.78rem',
+                        sm: '0.9rem',
+                        md: '1rem',
+                      },
+                    }}
+                  >
+                    {chart.name}
+                  </Typography>
+                  <Typography
+                    variant="caption"
+                    sx={{
+                      color: 'text.secondary',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      whiteSpace: 'nowrap',
+                      display: 'block',
+                      fontSize: {
+                        xs: '0.65rem',
+                        sm: '0.75rem',
+                        md: '0.8rem',
+                      },
+                    }}
+                  >
+                    {chart.artists?.primary?.[0]?.name || 'Various Artists'}
                   </Typography>
                 </Box>
               ))}
@@ -498,9 +695,14 @@ const HomePage: React.FC<HomePageProps> = ({
           </Typography>
 
           {playlistsLoading ? (
-            <Box sx={{ display: 'flex', justifyContent: 'center', py: 3 }}>
-              <CircularProgress size={32} sx={{ color: 'primary.main' }} />
-            </Box>
+              <Box sx={{ display: 'flex', gap: 2, pb: 2, overflowX: 'auto' }}>
+                {[...Array(6)].map((_, idx) => (
+                  <Box key={idx} sx={{ minWidth: 140, maxWidth: 140 }}>
+                    <Skeleton variant="rounded" width={140} height={140} sx={{ mb: 1 }} />
+                    <Skeleton variant="text" width="80%" />
+                  </Box>
+                ))}
+              </Box>
           ) : (
             <Box
               sx={{
@@ -542,14 +744,19 @@ const HomePage: React.FC<HomePageProps> = ({
                     <PlaylistPlayIcon sx={{ fontSize: 60 }} />
                   </Avatar>
                   <Typography
-                    variant="body2"
-                    sx={{
-                      fontWeight: 600,
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis',
-                      whiteSpace: 'nowrap',
-                      color: 'text.primary',
-                    }}
+                      variant="body2"
+                      sx={{
+                        fontWeight: 600,
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap',
+                        color: 'text.primary',
+                        fontSize: {
+                          xs: '0.78rem',
+                          sm: '0.9rem',
+                          md: '1rem',
+                        },
+                      }}
                   >
                     {playlist.name}
                   </Typography>
@@ -564,8 +771,13 @@ const HomePage: React.FC<HomePageProps> = ({
             Top Artists
           </Typography>
           {topArtistsLoading ? (
-            <Box sx={{ display: 'flex', justifyContent: 'center', py: 2 }}>
-              <CircularProgress size={24} sx={{ color: 'primary.main' }} />
+            <Box sx={{ display: 'flex', gap: 2, overflowX: 'auto', pb: 1 }}>
+              {[...Array(6)].map((_, idx) => (
+                <Box key={idx} sx={{ minWidth: 140, maxWidth: 140 }}>
+                  <Skeleton variant="circular" width={140} height={140} sx={{ mb: 1 }} />
+                  <Skeleton variant="text" width="80%" />
+                </Box>
+              ))}
             </Box>
           ) : topArtistsError ? (
             <Typography variant="body2" color="error">
@@ -749,16 +961,21 @@ const HomePage: React.FC<HomePageProps> = ({
                       whiteSpace: 'nowrap',
                     }}
                   >
-                    {item.song.name}
+                    {typeof item.position !== 'undefined' ? `${item.position}. ${item.song.name}` : item.song.name}
                   </Typography>
                   <Typography
-                    variant="body2"
-                    color="text.secondary"
-                    sx={{
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis',
-                      whiteSpace: 'nowrap',
-                    }}
+                      variant="body2"
+                      color="text.secondary"
+                      sx={{
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap',
+                        fontSize: {
+                          xs: '0.7rem',
+                          sm: '0.8rem',
+                          md: '0.9rem',
+                        },
+                      }}
                   >
                     {item.song.creditName}
                   </Typography>

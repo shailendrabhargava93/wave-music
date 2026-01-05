@@ -16,26 +16,72 @@ import SongItem from './SongItem';
 interface UpNextDrawerProps {
   open: boolean;
   onClose: () => void;
-  suggestions: Song[];
+  items: Song[];
   loading: boolean;
   onSongSelect: (song: Song) => void;
   onReorder?: (newOrder: Song[]) => void;
+  currentSongId?: string | null;
 }
 
 const UpNextDrawer: React.FC<UpNextDrawerProps> = ({
   open,
   onClose,
-  suggestions,
+  items: initialItems,
   loading,
   onSongSelect,
   onReorder,
+  currentSongId,
 }) => {
-  const [items, setItems] = useState<Song[]>(suggestions || []);
+  const [items, setItems] = useState<Song[]>(initialItems || []);
   const dragIndexRef = useRef<number | null>(null);
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const [maxHeight, setMaxHeight] = useState<number>(60); // percent of viewport
+  const draggingRef = useRef(false);
+  const startYRef = useRef<number>(0);
+  const startHeightRef = useRef<number>(60);
 
   useEffect(() => {
-    setItems(suggestions || []);
-  }, [suggestions]);
+    setItems(initialItems || []);
+  }, [initialItems]);
+
+  useEffect(() => {
+    const handleTouchMove = (ev: TouchEvent) => {
+      if (!draggingRef.current) return;
+      const touch = ev.touches[0];
+      const dy = startYRef.current - touch.clientY;
+      const newHeight = Math.min(90, Math.max(30, startHeightRef.current + (dy / window.innerHeight) * 100));
+      setMaxHeight(newHeight);
+    };
+
+    const handleMouseMove = (ev: MouseEvent) => {
+      if (!draggingRef.current) return;
+      const dy = startYRef.current - ev.clientY;
+      const newHeight = Math.min(90, Math.max(30, startHeightRef.current + (dy / window.innerHeight) * 100));
+      setMaxHeight(newHeight);
+    };
+
+    const stopDrag = () => {
+      draggingRef.current = false;
+      // Snap-to-full behavior: if user drags past 75% of viewport, expand to full
+      setMaxHeight(prev => {
+        if (prev >= 75) return 100;
+        if (prev <= 35) return 35;
+        return prev;
+      });
+    };
+
+    window.addEventListener('touchmove', handleTouchMove);
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('touchend', stopDrag);
+    window.addEventListener('mouseup', stopDrag);
+
+    return () => {
+      window.removeEventListener('touchmove', handleTouchMove);
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('touchend', stopDrag);
+      window.removeEventListener('mouseup', stopDrag);
+    };
+  }, []);
 
   const handleDragStart = (index: number) => (e: React.DragEvent) => {
     dragIndexRef.current = index;
@@ -64,6 +110,20 @@ const UpNextDrawer: React.FC<UpNextDrawerProps> = ({
     setItems(updated);
     dragIndexRef.current = null;
     if (onReorder) onReorder(updated);
+  };
+
+  const startDragTouch = (clientY: number) => {
+    draggingRef.current = true;
+    startYRef.current = clientY;
+    startHeightRef.current = maxHeight;
+  };
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    startDragTouch(e.touches[0].clientY);
+  };
+
+  const handleMouseDown = (e: React.MouseEvent) => {
+    startDragTouch(e.clientY);
   };
   const getHighQualityImage = (
     images: Array<{ quality: string; url?: string; link?: string }>
@@ -102,29 +162,40 @@ const UpNextDrawer: React.FC<UpNextDrawerProps> = ({
       PaperProps={{
         sx: {
           borderRadius: '16px 16px 0 0',
-          maxHeight: '70vh',
+          maxHeight: `${maxHeight}vh`,
           bgcolor: 'background.paper',
           display: 'flex',
           flexDirection: 'column',
         },
       }}
     >
+      {/* Drag handle */}
+      <Box sx={{ display: 'flex', justifyContent: 'center', py: 0.75, cursor: 'ns-resize' }}>
+        <Box
+          onTouchStart={handleTouchStart}
+          onMouseDown={handleMouseDown}
+          sx={{ width: 48, height: 6, borderRadius: 3, bgcolor: 'divider' }}
+        />
+      </Box>
+
       {/* Sticky Header (fixed, like Details drawer) */}
       <Box
         sx={{
-          bgcolor: 'background.default',
+          
           color: 'text.primary',
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
-          p: 1,
+          px: 2,
           borderBottom: '1px solid',
           borderColor: 'divider',
         }}
       >
-        <Typography variant="subtitle1" sx={{ fontWeight: 700, fontSize: '0.95rem' }}>
-          Up Next
-        </Typography>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+          <Typography variant="subtitle1" sx={{ fontWeight: 700, fontSize: '0.95rem' }}>
+            Up Next
+          </Typography>
+        </Box>
         <IconButton
           onClick={onClose}
           size="small"
@@ -136,7 +207,7 @@ const UpNextDrawer: React.FC<UpNextDrawerProps> = ({
       </Box>
 
       {/* Scrollable Content */}
-      <Box sx={{ p: 1.25, maxHeight: '60vh', overflowY: 'auto' }}>
+      <Box ref={containerRef} sx={{ p: 1.25, maxHeight: 'calc(100vh - 120px)', overflowY: 'auto' }}>
         {/* Loading State */}
         {loading && (
           <Box
@@ -155,7 +226,7 @@ const UpNextDrawer: React.FC<UpNextDrawerProps> = ({
           </Box>
         )}
 
-        {/* Suggestions List */}
+        {/* List */}
         {!loading && items.length > 0 && (
           <List sx={{ p: 0 }}>
             {items.filter((song) => song && song.id).map((song, index) => (
@@ -178,6 +249,8 @@ const UpNextDrawer: React.FC<UpNextDrawerProps> = ({
                   })()}
                   imageSrc={song.image ? getHighQualityImage(song.image) : ''}
                   onClick={() => handleSongClick(song)}
+                  highlight={!!currentSongId && song.id === currentSongId}
+                  playing={!!currentSongId && song.id === currentSongId}
                   rightContent={
                     <Box sx={{ display: 'flex', alignItems: 'center' }}>
                       <DragIndicatorIcon sx={{ color: 'text.secondary', fontSize: 20, pointerEvents: 'none' }} />
@@ -190,7 +263,7 @@ const UpNextDrawer: React.FC<UpNextDrawerProps> = ({
         )}
 
         {/* Empty State */}
-        {!loading && suggestions.length === 0 && (
+        {!loading && items.length === 0 && (
           <Box
             sx={{
               display: 'flex',

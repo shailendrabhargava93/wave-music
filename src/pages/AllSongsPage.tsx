@@ -268,7 +268,7 @@ const AllSongsPage: React.FC<AllSongsPageProps> = ({ onSongSelect, chartSongs, o
                       whiteSpace: 'nowrap',
                     }}
                   >
-                    {item.song.name}
+                    {typeof item.position !== 'undefined' ? `${item.position}. ${item.song.name}` : item.song.name}
                   </Typography>
                   <Typography
                     variant="body2"
