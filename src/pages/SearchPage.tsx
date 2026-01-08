@@ -421,9 +421,9 @@ const SearchPage: React.FC<SearchPageProps> = ({ onSongSelect, onPlaylistSelect,
             </IconButton>
           </Box>
 
-          {/* Compact horizontal scroller for recent search chips */}
-          <Box sx={{ mb: 0.5, overflowX: 'auto', py: 0.25 }}>
-            <Box sx={{ display: 'flex', gap: 1, flexWrap: 'nowrap', alignItems: 'center' }}>
+          {/* Recent search chips that wrap onto multiple lines */}
+          <Box sx={{ mb: 0.5, py: 0.25 }}>
+            <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', alignItems: 'center' }}>
               {recentSearches.map((search, index) => (
                 <Chip
                   key={index}
@@ -431,7 +431,6 @@ const SearchPage: React.FC<SearchPageProps> = ({ onSongSelect, onPlaylistSelect,
                   label={search}
                   onClick={() => handleRecentSearchClick(search)}
                   sx={{
-                    flex: '0 0 auto',
                     height: 28,
                     bgcolor: 'action.hover',
                     color: 'text.primary',

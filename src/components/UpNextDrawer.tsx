@@ -45,23 +45,36 @@ const UpNextDrawer: React.FC<UpNextDrawerProps> = ({
   }, [initialItems]);
 
   useEffect(() => {
+    let rafId: number | null = null;
     const handleTouchMove = (ev: TouchEvent) => {
       if (!draggingRef.current) return;
       const touch = ev.touches[0];
       const dy = startYRef.current - touch.clientY;
-      const newHeight = Math.min(90, Math.max(30, startHeightRef.current + (dy / window.innerHeight) * 100));
-      setMaxHeight(newHeight);
+      const compute = () => {
+        const newHeight = Math.min(90, Math.max(30, startHeightRef.current + (dy / window.innerHeight) * 100));
+        setMaxHeight(newHeight);
+        rafId = null;
+      };
+      if (rafId == null) rafId = requestAnimationFrame(compute);
     };
 
     const handleMouseMove = (ev: MouseEvent) => {
       if (!draggingRef.current) return;
       const dy = startYRef.current - ev.clientY;
-      const newHeight = Math.min(90, Math.max(30, startHeightRef.current + (dy / window.innerHeight) * 100));
-      setMaxHeight(newHeight);
+      const compute = () => {
+        const newHeight = Math.min(90, Math.max(30, startHeightRef.current + (dy / window.innerHeight) * 100));
+        setMaxHeight(newHeight);
+        rafId = null;
+      };
+      if (rafId == null) rafId = requestAnimationFrame(compute);
     };
 
     const stopDrag = () => {
       draggingRef.current = false;
+      if (rafId) {
+        cancelAnimationFrame(rafId);
+        rafId = null;
+      }
       // Snap-to-full behavior: if user drags past 75% of viewport, expand to full
       setMaxHeight(prev => {
         if (prev >= 75) return 100;
@@ -219,46 +232,56 @@ const UpNextDrawer: React.FC<UpNextDrawerProps> = ({
               gap: 2,
             }}
           >
-            <CircularProgress size={40} sx={{ color: 'primary.main' }} />
-            <Typography variant="body2" color="text.secondary">
-              Loading suggestions...
-            </Typography>
+            <CircularProgress size={36} sx={{ color: 'primary.main' }} />
+            <Typography variant="body2" color="text.secondary">Loading...</Typography>
           </Box>
         )}
 
         {/* List */}
         {!loading && items.length > 0 && (
           <List sx={{ p: 0 }}>
-            {items.filter((song) => song && song.id).map((song, index) => (
-              <Box
-                key={song.id || index}
-                draggable
-                onDragStart={handleDragStart(index)}
-                onDragOver={handleDragOver(index)}
-                onDrop={handleDrop(index)}
-                sx={{ cursor: 'grab' }}
-              >
-                <SongItem
-                  title={decodeHtmlEntities(song.name || 'Unknown Song')}
-                  artist={(() => {
-                    const songAny = song as any;
-                    if (songAny.artists?.primary && Array.isArray(songAny.artists.primary)) {
-                      return songAny.artists.primary.map((artist: any) => artist.name).join(', ');
+            {items.filter((song) => song && song.id).map((song, index) => {
+              const isPlaying = !!currentSongId && String(song.id) === String(currentSongId);
+              return (
+                <Box
+                  key={song.id || index}
+                  draggable
+                  onDragStart={handleDragStart(index)}
+                  onDragOver={handleDragOver(index)}
+                  onDrop={handleDrop(index)}
+                  sx={{ cursor: 'grab' }}
+                >
+                  <SongItem
+                    title={decodeHtmlEntities(song.name || 'Unknown Song')}
+                    artist={(() => {
+                      const songAny = song as any;
+                      if (songAny.artists?.primary && Array.isArray(songAny.artists.primary)) {
+                        return songAny.artists.primary.map((artist: any) => artist.name).join(', ');
+                      }
+                      return song.primaryArtists || 'Unknown Artist';
+                    })()}
+                    imageSrc={song.image ? getHighQualityImage(song.image) : ''}
+                    onClick={() => handleSongClick(song)}
+                    highlight={isPlaying}
+                    playing={isPlaying}
+                    rightContent={
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        {isPlaying && (
+                          <Box sx={{ width: 18, height: 18, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <Box sx={{ display: 'flex', gap: 0.3, alignItems: 'end' }}>
+                              {[0,1,2].map(i => (
+                                <Box key={i} sx={(theme) => ({ width: 3, height: 6 + (i * 4), bgcolor: theme.palette.primary.main, borderRadius: 1, animation: `eq-small 600ms ${i * 120}ms infinite linear` })} />
+                              ))}
+                            </Box>
+                          </Box>
+                        )}
+                        <DragIndicatorIcon sx={{ color: 'text.secondary', fontSize: 20, pointerEvents: 'none' }} />
+                      </Box>
                     }
-                    return song.primaryArtists || 'Unknown Artist';
-                  })()}
-                  imageSrc={song.image ? getHighQualityImage(song.image) : ''}
-                  onClick={() => handleSongClick(song)}
-                  highlight={!!currentSongId && song.id === currentSongId}
-                  playing={!!currentSongId && song.id === currentSongId}
-                  rightContent={
-                    <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                      <DragIndicatorIcon sx={{ color: 'text.secondary', fontSize: 20, pointerEvents: 'none' }} />
-                    </Box>
-                  }
-                />
-              </Box>
-            ))}
+                  />
+                </Box>
+              );
+            })}
           </List>
         )}
 

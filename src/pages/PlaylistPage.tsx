@@ -118,6 +118,13 @@ const PlaylistPage: React.FC<PlaylistPageProps> = ({
     handleMenuClose();
   };
 
+  const handlePlayNow = () => {
+    if (selectedSong && onSongSelect) {
+      onSongSelect(selectedSong, songs);
+    }
+    handleMenuClose();
+  };
+
   const handlePlayNext = () => {
     if (selectedSong && onPlayNext) {
       onPlayNext(selectedSong);
@@ -506,7 +513,7 @@ const PlaylistPage: React.FC<PlaylistPageProps> = ({
               horizontal: 'right',
             }}
           >
-            <MenuItem onClick={handlePlayNext}>
+            <MenuItem onClick={handlePlayNow}>
               <ListItemIcon>
                 <PlayArrowIcon fontSize="small" />
               </ListItemIcon>

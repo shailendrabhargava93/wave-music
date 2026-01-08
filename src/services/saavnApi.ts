@@ -1,13 +1,38 @@
 import { SearchResponse } from '../types/api';
 import { setLastFetchFailed } from './networkStatus';
 
+const getInflight = () => {
+  if (!(saavnApi as any)._inflight) (saavnApi as any)._inflight = {} as any;
+  const root = (saavnApi as any)._inflight as Record<string, Map<string, Promise<any>>>;
+  root.playlists = root.playlists ?? new Map<string, Promise<any>>();
+  root.albums = root.albums ?? new Map<string, Promise<any>>();
+  root.searches = root.searches ?? new Map<string, Promise<any>>();
+  root.songsByIds = root.songsByIds ?? new Map<string, Promise<any>>();
+  root.launches = root.launches ?? new Map<string, Promise<any>>();
+  return root as {
+    playlists: Map<string, Promise<any>>;
+    albums: Map<string, Promise<any>>;
+    searches: Map<string, Promise<any>>;
+    songsByIds: Map<string, Promise<any>>;
+    launches: Map<string, Promise<any>>;
+  };
+};
+
+const markFetchFailed = (message?: string) => {
+  if (typeof navigator !== 'undefined' && !navigator.onLine) {
+    setLastFetchFailed(true, message ?? 'Network offline');
+  } else {
+    // Don't mark fetch failure when online; banner reserved for offline state
+    setLastFetchFailed(false);
+  }
+};
+
 const BASE_URL = 'https://saavn-api-client.vercel.app/api';
 
 export const saavnApi = {
   searchSongs: async (query: string, limit: number = 20): Promise<any> => {
     try {
-      if (!(saavnApi as any)._inflight) (saavnApi as any)._inflight = { playlists: new Map<string, Promise<any>>(), albums: new Map<string, Promise<any>>(), searches: new Map<string, Promise<any>>(), songsByIds: new Map<string, Promise<any>>(), launches: new Map<string, Promise<any>>() };
-      const inflight = (saavnApi as any)._inflight.searches as Map<string, Promise<any>>;
+      const inflight = getInflight().searches;
       const key = `${query}::${limit}`;
       if (inflight.has(key)) return inflight.get(key)!;
 
@@ -30,7 +55,7 @@ export const saavnApi = {
       }
     } catch (error) {
       console.error('Error searching songs:', error);
-      setLastFetchFailed(true);
+      markFetchFailed();
       throw error;
     }
   },
@@ -46,7 +71,7 @@ export const saavnApi = {
       return data;
     } catch (error) {
       console.error('Error searching playlists:', error);
-      setLastFetchFailed(true);
+      markFetchFailed();
       throw error;
     }
   },
@@ -62,7 +87,7 @@ export const saavnApi = {
       return data;
     } catch (error) {
       console.error('Error searching:', error);
-      setLastFetchFailed(true);
+      markFetchFailed();
       throw error;
     }
   },
@@ -78,15 +103,14 @@ export const saavnApi = {
       return data;
     } catch (error) {
       console.error('Error fetching song:', error);
-      setLastFetchFailed(true, `Failed to fetch song: ${songId}`);
+      markFetchFailed(`Failed to fetch song: ${songId}`);
       throw error;
     }
   },
 
   getSongsByIds: async (ids: string[]) => {
     try {
-      if (!(saavnApi as any)._inflight) (saavnApi as any)._inflight = { playlists: new Map<string, Promise<any>>(), albums: new Map<string, Promise<any>>(), searches: new Map<string, Promise<any>>(), songsByIds: new Map<string, Promise<any>>(), launches: new Map<string, Promise<any>>() };
-      const inflight = (saavnApi as any)._inflight.songsByIds as Map<string, Promise<any>>;
+      const inflight = getInflight().songsByIds;
       const key = ids.join(',');
       if (inflight.has(key)) return inflight.get(key)!;
 
@@ -110,7 +134,7 @@ export const saavnApi = {
       }
     } catch (error) {
       console.error('Error fetching songs by IDs:', error);
-      setLastFetchFailed(true);
+      markFetchFailed();
       throw error;
     }
   },
@@ -126,7 +150,7 @@ export const saavnApi = {
       return data;
     } catch (error) {
       console.error('Error searching artists:', error);
-      setLastFetchFailed(true);
+      markFetchFailed();
       throw error;
     }
   },
@@ -142,7 +166,7 @@ export const saavnApi = {
       return data;
     } catch (error) {
       console.error('Error fetching artist songs:', error);
-      setLastFetchFailed(true);
+      markFetchFailed();
       throw error;
     }
   },
@@ -150,8 +174,7 @@ export const saavnApi = {
   getPlaylistById: async (playlistId: string, limit: number = 100): Promise<any> => {
     // Dedupe in-flight playlist requests so multiple callers share the same Promise
     try {
-      if (!(saavnApi as any)._inflight) (saavnApi as any)._inflight = { playlists: new Map<string, Promise<any>>(), albums: new Map<string, Promise<any>>() };
-      const inflight = (saavnApi as any)._inflight.playlists as Map<string, Promise<any>>;
+      const inflight = getInflight().playlists;
       if (inflight.has(playlistId)) return inflight.get(playlistId)!;
 
       const promise = (async () => {
@@ -173,7 +196,7 @@ export const saavnApi = {
       }
     } catch (error) {
       console.error('Error fetching playlist:', error);
-      setLastFetchFailed(true);
+      markFetchFailed();
       throw error;
     }
   },
@@ -181,8 +204,7 @@ export const saavnApi = {
   getAlbumById: async (albumId: string, limit: number = 100): Promise<any> => {
     // Dedupe in-flight album requests so multiple callers share the same Promise
     try {
-      if (!(saavnApi as any)._inflight) (saavnApi as any)._inflight = { playlists: new Map<string, Promise<any>>(), albums: new Map<string, Promise<any>>() };
-      const inflight = (saavnApi as any)._inflight.albums as Map<string, Promise<any>>;
+      const inflight = getInflight().albums;
       if (inflight.has(albumId)) return inflight.get(albumId)!;
 
       const promise = (async () => {
@@ -204,7 +226,7 @@ export const saavnApi = {
       }
     } catch (error) {
       console.error('Error fetching album:', error);
-      setLastFetchFailed(true);
+      markFetchFailed();
       throw error;
     }
   },
@@ -220,7 +242,7 @@ export const saavnApi = {
       return data;
     } catch (error) {
       console.error('Error searching albums:', error);
-      setLastFetchFailed(true);
+      markFetchFailed();
       throw error;
     }
   },
@@ -244,7 +266,7 @@ export const saavnApi = {
       return data;
     } catch (error) {
       console.error('Error fetching song suggestions:', error);
-      setLastFetchFailed(true);
+      markFetchFailed();
       throw error;
     }
   },
@@ -256,8 +278,7 @@ export const saavnApi = {
   // nested properties defensively.
   launch: async (): Promise<any> => {
     try {
-      if (!(saavnApi as any)._inflight) (saavnApi as any)._inflight = { playlists: new Map<string, Promise<any>>(), albums: new Map<string, Promise<any>>(), searches: new Map<string, Promise<any>>(), songsByIds: new Map<string, Promise<any>>(), launches: new Map<string, Promise<any>>() };
-      const inflight = (saavnApi as any)._inflight.launches as Map<string, Promise<any>>;
+      const inflight = getInflight().launches;
       const key = 'launch';
       if (inflight.has(key)) return inflight.get(key)!;
 
@@ -282,7 +303,7 @@ export const saavnApi = {
       }
     } catch (error) {
       console.error('Error calling launch API:', error);
-      setLastFetchFailed(true, 'Failed to call launch API');
+      markFetchFailed('Failed to call launch API');
       throw error;
     }
   },

@@ -1,12 +1,8 @@
 import React, { useState } from 'react';
 import { 
   Box, 
-  Typography, 
-  List, 
-  ListItem, 
-  ListItemText, 
+  Typography,
   Switch,
-  Divider,
   Paper,
   Container,
   IconButton,
@@ -14,7 +10,12 @@ import {
   Alert,
   Radio,
   RadioGroup,
-  Drawer
+  Drawer,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Button
 } from '@mui/material';
 import DarkModeIcon from '@mui/icons-material/DarkMode';
 import LightModeIcon from '@mui/icons-material/LightMode';
@@ -27,6 +28,7 @@ import HighQualityIcon from '@mui/icons-material/HighQuality';
 import CloseIcon from '@mui/icons-material/Close';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import { setMeta } from '../services/storage';
+import pkg from '../../package.json';
 
 interface SettingsPageProps {
   isDarkMode: boolean;
@@ -50,6 +52,7 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
     return saved || '320';
   });
   const [qualityDrawerOpen, setQualityDrawerOpen] = useState(false);
+  const [confirmClearOpen, setConfirmClearOpen] = useState(false);
 
   const handleStreamQualityChange = (newQuality: string) => {
     setStreamQuality(newQuality);
@@ -60,19 +63,16 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
     setQualityDrawerOpen(false);
   };
 
-  const getQualityLabel = () => {
-    const labels: Record<string, string> = {
-      '48': '48 kbps - Low',
-      '160': '160 kbps - Medium',
-      '320': '320 kbps - High'
-    };
-    return labels[streamQuality] || '320 kbps - High';
+  const handleClearSearchHistory = () => {
+    // open confirmation dialog
+    setConfirmClearOpen(true);
   };
 
-  const handleClearSearchHistory = () => {
+  const confirmClearSearchHistory = () => {
     localStorage.removeItem('recentSearches');
     setSnackbarMessage('Search history cleared successfully');
     setSnackbarOpen(true);
+    setConfirmClearOpen(false);
   };
 
   const handleShare = async () => {
@@ -146,345 +146,81 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
       {/* Spacer to offset fixed header height */}
       <Box sx={{ height: { xs: 56, sm: 64 }, width: '100%' }} />
       <Container maxWidth="sm" sx={{ px: { xs: 2, sm: 3 }, pt: 0 }}>
-        <Paper 
-          elevation={0}
-          sx={{ 
-            bgcolor: 'background.paper',
-            borderRadius: 2,
-            overflow: 'hidden',
-            border: (theme) => `1px solid ${theme.palette.divider}`
-          }}
-        >
-          <List sx={{ py: 0 }}>
-            <ListItem
-              sx={{
-                py: 2,
-                px: { xs: 2, sm: 3 },
-                '&:hover': {
-                  bgcolor: 'action.hover'
-                },
-                borderBottom: (theme) => `1px solid ${theme.palette.divider}`
-              }}
-            >
-              <Box 
-                sx={{ 
-                  display: 'flex', 
-                  alignItems: 'center', 
-                  gap: 2,
-                  flex: 1,
-                  minWidth: 0
-                }}
-              >
-                {isDarkMode ? (
-                  <DarkModeIcon sx={{ color: 'primary.main' }} />
-                ) : (
-                  <LightModeIcon sx={{ color: 'primary.main' }} />
-                )}
-                <ListItemText
-                  primary={
-                    <Typography 
-                      variant="body1" 
-                      sx={{ 
-                        fontWeight: 600,
-                        color: 'text.primary'
-                      }}
-                    >
-                      Dark Theme
-                    </Typography>
-                  }
-                  secondary={
-                    <Typography 
-                      variant="body2" 
-                      sx={{ color: 'text.secondary' }}
-                    >
-                      {isDarkMode ? 'Switch to light mode' : 'Switch to dark mode'}
-                    </Typography>
-                  }
-                />
+        <Box sx={{ display: 'grid', gap: 2 }}>
+          {/* Appearance */}
+          <Paper elevation={0} sx={{ bgcolor: 'background.paper', borderRadius: 2, border: (theme) => `1px solid ${theme.palette.divider}` }}>
+            <Box sx={{ px: 2, py: 1.25, display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: (theme) => `1px solid ${theme.palette.divider}` }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                {isDarkMode ? <DarkModeIcon sx={{ color: 'primary.main' }} /> : <LightModeIcon sx={{ color: 'primary.main' }} />}
+                <Box>
+                  <Typography variant="body1" sx={{ fontWeight: 600, color: 'text.primary' }}>Theme</Typography>
+                </Box>
               </Box>
-              <Switch
-                checked={isDarkMode}
-                onChange={onThemeToggle}
-                sx={{
-                  '& .MuiSwitch-switchBase.Mui-checked': {
-                    color: 'primary.main',
-                  },
-                  '& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track': {
-                    backgroundColor: 'primary.main',
-                  },
-                }}
-              />
-            </ListItem>
-            
-            <Divider />
+              <Switch checked={isDarkMode} onChange={onThemeToggle} sx={{ '& .MuiSwitch-switchBase.Mui-checked': { color: 'primary.main' }, '& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track': { backgroundColor: 'primary.main' } }} />
+            </Box>
 
-            <ListItem
-              sx={{
-                py: 2,
-                px: { xs: 2, sm: 3 },
-                '&:hover': {
-                  bgcolor: 'action.hover'
-                },
-                borderBottom: (theme) => `1px solid ${theme.palette.divider}`
-              }}
-            >
-              <Box 
-                sx={{ 
-                  display: 'flex', 
-                  alignItems: 'center', 
-                  gap: 2,
-                  flex: 1,
-                  minWidth: 0
-                }}
-              >
+            <Box sx={{ px: 2, py: 1.25, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
                 <LabelOffIcon sx={{ color: 'primary.main' }} />
-                <ListItemText
-                  primary={
-                    <Typography 
-                      variant="body1" 
-                      sx={{ 
-                        fontWeight: 600,
-                        color: 'text.primary'
-                      }}
-                    >
-                      Hide Bottom Nav Text
-                    </Typography>
-                  }
-                  secondary={
-                    <Typography 
-                      variant="body2" 
-                      sx={{ color: 'text.secondary' }}
-                    >
-                      Show only icons in bottom navigation
-                    </Typography>
-                  }
-                />
+                <Box>
+                  <Typography variant="body1" sx={{ fontWeight: 600, color: 'text.primary' }}>Toggle Labels</Typography>
+                </Box>
               </Box>
-              <Switch
-                checked={hideBottomNavText}
-                onChange={onBottomNavTextToggle}
-                sx={{
-                  '& .MuiSwitch-switchBase.Mui-checked': {
-                    color: 'primary.main',
-                  },
-                  '& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track': {
-                    backgroundColor: 'primary.main',
-                  },
-                }}
-              />
-            </ListItem>
-            
-            <Divider />
+              <Switch checked={!hideBottomNavText} onChange={() => onBottomNavTextToggle && onBottomNavTextToggle()} sx={{ '& .MuiSwitch-switchBase.Mui-checked': { color: 'primary.main' }, '& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track': { backgroundColor: 'primary.main' } }} />
+            </Box>
+          </Paper>
 
-            <ListItem
-              onClick={() => setQualityDrawerOpen(true)}
-              sx={{
-                py: 2,
-                px: { xs: 2, sm: 3 },
-                cursor: 'pointer',
-                '&:hover': {
-                  bgcolor: 'action.hover'
-                },
-                borderBottom: (theme) => `1px solid ${theme.palette.divider}`
-              }}
-            >
-              <Box 
-                sx={{ 
-                  display: 'flex', 
-                  alignItems: 'center', 
-                  gap: 2,
-                  flex: 1,
-                  minWidth: 0
-                }}
-              >
+          {/* Playback (Stream quality + Search history combined) */}
+          <Paper elevation={0} sx={{ bgcolor: 'background.paper', borderRadius: 2, border: (theme) => `1px solid ${theme.palette.divider}` }}>
+            <Box sx={{ px: 2, py: 1.25, display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: (theme) => `1px solid ${theme.palette.divider}` }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
                 <HighQualityIcon sx={{ color: 'primary.main' }} />
-                <ListItemText
-                  primary={
-                    <Typography 
-                      variant="body1" 
-                      sx={{ 
-                        fontWeight: 600,
-                        color: 'text.primary'
-                      }}
-                    >
-                      Stream Quality
-                    </Typography>
-                  }
-                  secondary={
-                    <Typography 
-                      variant="body2" 
-                      sx={{ color: 'text.secondary' }}
-                    >
-                      {getQualityLabel()}
-                    </Typography>
-                  }
-                />
+                <Box>
+                  <Typography variant="body1" sx={{ fontWeight: 600, color: 'text.primary' }}>Stream Quality</Typography>
+                </Box>
               </Box>
-              <IconButton
-                size="small"
-                sx={{ color: 'text.secondary' }}
-                aria-label="open quality settings"
-              >
-                <ChevronRightIcon />
-              </IconButton>
-            </ListItem>
-            
-            <Divider />
+              <IconButton size="small" sx={{ color: 'text.secondary' }} onClick={() => setQualityDrawerOpen(true)} aria-label="open quality settings"><ChevronRightIcon /></IconButton>
+            </Box>
 
-            <ListItem
-              onClick={handleClearSearchHistory}
-              sx={{
-                py: 2,
-                px: { xs: 2, sm: 3 },
-                cursor: 'pointer',
-                '&:hover': {
-                  bgcolor: 'action.hover'
-                },
-                borderBottom: (theme) => `1px solid ${theme.palette.divider}`
-              }}
-            >
-              <Box 
-                sx={{ 
-                  display: 'flex', 
-                  alignItems: 'center', 
-                  gap: 2,
-                  flex: 1,
-                  minWidth: 0
-                }}
-              >
+            <Box sx={{ px: 2, py: 1.25, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
                 <DeleteSweepIcon sx={{ color: 'primary.main' }} />
-                <ListItemText
-                  primary={
-                    <Typography 
-                      variant="body1" 
-                      sx={{ 
-                        fontWeight: 600,
-                        color: 'text.primary'
-                      }}
-                    >
-                      Clear Search History
-                    </Typography>
-                  }
-                  secondary={
-                    <Typography 
-                      variant="body2" 
-                      sx={{ color: 'text.secondary' }}
-                    >
-                      Remove all recent searches
-                    </Typography>
-                  }
-                />
+                <Box>
+                  <Typography variant="body1" sx={{ fontWeight: 600, color: 'text.primary' }}>Search History</Typography>
+                </Box>
               </Box>
-            </ListItem>
-            
-            <Divider />
-            
-            <ListItem
-              onClick={handleShare}
-              sx={{
-                py: 2,
-                px: { xs: 2, sm: 3 },
-                cursor: 'pointer',
-                '&:hover': {
-                  bgcolor: 'action.hover'
-                },
-                borderBottom: (theme) => `1px solid ${theme.palette.divider}`
-              }}
-            >
-              <Box 
-                sx={{ 
-                  display: 'flex', 
-                  alignItems: 'center', 
-                  gap: 2,
-                  flex: 1,
-                  minWidth: 0
-                }}
-              >
-                <ShareIcon sx={{ color: 'primary.main' }} />
-                <ListItemText
-                  primary={
-                    <Typography 
-                      variant="body1" 
-                      sx={{ 
-                        fontWeight: 600,
-                        color: 'text.primary'
-                      }}
-                    >
-                      Share App
-                    </Typography>
-                  }
-                  secondary={
-                    <Typography 
-                      variant="body2" 
-                      sx={{ color: 'text.secondary' }}
-                    >
-                      Share Wave with your friends
-                    </Typography>
-                  }
-                />
-              </Box>
-              <IconButton 
-                size="small"
-                sx={{ color: 'text.secondary' }}
-              >
-                <ShareIcon fontSize="small" />
-              </IconButton>
-            </ListItem>
-            
-            <Divider />
-            
-            <ListItem
-              sx={{
-                py: 2,
-                px: { xs: 2, sm: 3 }
-              }}
-            >
-              <Box 
-                sx={{ 
-                  display: 'flex', 
-                  alignItems: 'center', 
-                  gap: 2,
-                  flex: 1,
-                  minWidth: 0
-                }}
-              >
-                <InfoOutlinedIcon sx={{ color: 'primary.main' }} />
-                <ListItemText
-                  primary={
-                    <Typography 
-                      variant="body1" 
-                      sx={{ 
-                        fontWeight: 600,
-                        color: 'text.primary'
-                      }}
-                    >
-                      About
-                    </Typography>
-                  }
-                  secondary={
-                    <Typography 
-                      variant="body2" 
-                      sx={{ color: 'text.secondary' }}
-                    >
-                      Wave Music App v1.0.0
-                    </Typography>
-                  }
-                />
-              </Box>
-            </ListItem>
-          </List>
-        </Paper>
+              <IconButton size="small" sx={{ color: 'text.secondary' }} onClick={handleClearSearchHistory} aria-label="clear search history"><ChevronRightIcon /></IconButton>
+            </Box>
+          </Paper>
 
-        <Box sx={{ mt: 4, px: 2 }}>
-          <Typography 
-            variant="body2" 
-            sx={{ 
-              color: 'text.secondary',
-              textAlign: 'center'
-            }}
-          >
-            Made with ❤️ by Wave Team
-          </Typography>
+
+
+          {/* Support / About */}
+          <Paper elevation={0} sx={{ bgcolor: 'background.paper', borderRadius: 2, border: (theme) => `1px solid ${theme.palette.divider}` }}>
+            <Box sx={{ px: 2, py: 1.25, display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: (theme) => `1px solid ${theme.palette.divider}` }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                <ShareIcon sx={{ color: 'primary.main' }} />
+                <Box>
+                  <Typography variant="body1" sx={{ fontWeight: 600, color: 'text.primary' }}>Share Wave</Typography>
+                </Box>
+              </Box>
+              <IconButton size="small" sx={{ color: 'text.secondary' }} onClick={handleShare}><ShareIcon fontSize="small" /></IconButton>
+            </Box>
+
+            <Box sx={{ px: 2, py: 1.25, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                <InfoOutlinedIcon sx={{ color: 'primary.main' }} />
+                <Box>
+                  <Typography variant="body1" sx={{ fontWeight: 600, color: 'text.primary' }}>About</Typography>
+                </Box>
+              </Box>
+              <Typography variant="body2" sx={{ color: 'text.secondary' }}>{`v${pkg.version}`}</Typography>
+            </Box>
+          </Paper>
+
+          <Box sx={{ mt: 1, px: 2 }}>
+            <Typography variant="body2" sx={{ color: 'text.secondary', textAlign: 'center' }}>Made with ❤️ by Wave Team</Typography>
+          </Box>
         </Box>
       </Container>
 
@@ -707,6 +443,17 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
           </RadioGroup>
         </Box>
       </Drawer>
+      {/* Confirm Clear Search History Dialog */}
+      <Dialog open={confirmClearOpen} onClose={() => setConfirmClearOpen(false)}>
+        <DialogTitle>Clear search history?</DialogTitle>
+        <DialogContent>
+          <Typography variant="body2">Are you sure you want to delete your search history? This action cannot be undone.</Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setConfirmClearOpen(false)}>Cancel</Button>
+          <Button color="error" onClick={confirmClearSearchHistory}>Delete</Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 };

@@ -13,6 +13,7 @@ import FavouritesPage from './pages/FavouritesPage';
 import AllSongsPage from './pages/AllSongsPage';
 import RecentlyPlayedPage from './pages/RecentlyPlayedPage';
 import ExplorePage from './pages/ExplorePage';
+import ArtistsPage from './pages/ArtistsPage';
 import { Song, CurrentSong } from './types/api';
 import { saavnApi } from './services/saavnApi';
 import { soundChartsApi, SoundChartsItem } from './services/soundChartsApi';
@@ -306,6 +307,8 @@ function App() {
       // ignore
     }
   }, [showRecentlyPlayed]);
+
+  
 
   useEffect(() => {
     try {
@@ -635,15 +638,31 @@ function App() {
   };
 
   // Decode HTML entities in strings
-  const handleSongSelect = async (song: Song, contextSongs?: Song[]) => {
+  const handleSongSelect = async (song: Song | string, contextSongs?: Song[], options?: { smooth?: boolean }) => {
     try {
       // Set loading state
       setIsLoadingSong(true);
+      // If caller passed a song id, fetch full song details first
+      let songObj: Song | undefined;
+      if (typeof song === 'string') {
+        try {
+          const resp = await saavnApi.getSongsByIds([song]);
+          if (resp?.success && resp.data && resp.data.length > 0) {
+            songObj = resp.data[0];
+          }
+        } catch (err) {
+          // If offline, saavnApi will have marked network status; still treat as unable to fetch
+          setIsLoadingSong(false);
+          return;
+        }
+      } else {
+        songObj = song as Song;
+      }
       
       // If contextSongs provided, populate queue with remaining songs
-      if (contextSongs && contextSongs.length > 0) {
+      if (contextSongs && contextSongs.length > 0 && songObj) {
         setCurrentContextSongs(contextSongs);
-        const currentIndex = contextSongs.findIndex(s => s.id === song.id);
+        const currentIndex = contextSongs.findIndex(s => s.id === songObj.id);
         if (currentIndex !== -1) {
           // Add all songs after the selected one to the queue
           const remainingSongs = contextSongs.slice(currentIndex + 1);
@@ -651,8 +670,41 @@ function App() {
         }
       }
       
+      // Smooth transition: fade out audio if requested
+      const smooth = options?.smooth ?? false;
+      const fade = async (out: boolean) => {
+        try {
+          if (!audio) return;
+          const steps = 8;
+          const stepTime = 30;
+          if (out) {
+            for (let i = 0; i < steps; i++) {
+              audio.volume = Math.max(0, audio.volume - (1 / steps));
+              // eslint-disable-next-line no-await-in-loop
+              await new Promise(r => setTimeout(r, stepTime));
+            }
+            audio.pause();
+          } else {
+            audio.play().catch(() => {});
+            for (let i = 0; i < steps; i++) {
+              audio.volume = Math.min(1, audio.volume + (1 / steps));
+              // eslint-disable-next-line no-await-in-loop
+              await new Promise(r => setTimeout(r, stepTime));
+            }
+          }
+        } catch (err) {
+          // ignore
+        }
+      };
+
+      if (smooth) {
+        // fade out current audio before switching
+        try { await fade(true); } catch (err) {}
+      }
+
       // Fetch complete song details with download URLs
-      const songDetailsResponse = await saavnApi.getSongsByIds([song.id]);
+      const songId = (songObj as Song).id;
+      const songDetailsResponse = await saavnApi.getSongsByIds([songId]);
       
       if (!songDetailsResponse.success || !songDetailsResponse.data || songDetailsResponse.data.length === 0) {
         setIsLoadingSong(false);
@@ -717,6 +769,9 @@ function App() {
       const artistNames = getArtistNames(songDetails.artists);
 
       if (!audioUrl) {
+        if (smooth) {
+          try { await fade(false); } catch (err) {}
+        }
         setIsLoadingSong(false);
         return;
       }
@@ -748,6 +803,10 @@ function App() {
       setCurrentSong(newSong);
       setIsPlaying(true);
       setIsLoadingSong(false);
+
+      if (smooth) {
+        try { await fade(false); } catch (err) {}
+      }
       
       // Add to recently played in localStorage with complete song details
       const storedRecentlyPlayed = (await getMeta('recentlyPlayed')) as Song[] | undefined;
@@ -1169,6 +1228,7 @@ function App() {
             chartSongs={chartSongs}
             chartSongsLoading={chartSongsLoading}
             onViewAllCharts={handleViewAllCharts}
+            onViewAllArtists={() => { setActiveTab('artists'); }}
             onAlbumSelect={handleAlbumSelect}
             onPlaylistSelect={handlePlaylistSelect}
             onArtistSelect={handleArtistSelect}
@@ -1181,6 +1241,10 @@ function App() {
               setSnackbarOpen(true);
             }}
           />
+        );
+      case 'artists':
+        return (
+          <ArtistsPage onBack={() => setActiveTab('home')} onArtistSelect={(id, name, image) => { setActiveTab('home'); handleArtistSelect(id || '', name || '', image || ''); }} />
         );
       case 'explore':
         return (
@@ -1285,6 +1349,23 @@ function App() {
                 onRepeatModeChange={setRepeatMode}
                 shuffleMode={shuffleMode}
                 onShuffleModeChange={setShuffleMode}
+                onReorder={(newOrder: Song[]) => {
+                  // Persist reordered queue: if current song is first, keep it as current and set remaining queue
+                  if (!currentSong) return;
+                  // If newOrder contains currentSong at index 0, set the queue to rest
+                  const idx = newOrder.findIndex(s => s.id === currentSong.id);
+                  if (idx === 0) {
+                    setSongQueue(newOrder.slice(1));
+                  } else if (idx > 0) {
+                    // Place currentSong first and set rest as queue
+                    const reordered = [newOrder[idx], ...newOrder.slice(0, idx), ...newOrder.slice(idx + 1)];
+                    // Keep currentSong as-is, set queue to items after it
+                    setSongQueue(reordered.slice(1));
+                  } else {
+                    // If currentSong not found, just set queue to newOrder
+                    setSongQueue(newOrder);
+                  }
+                }}
                 // Song details for info popup
                 albumId={currentSong.albumId}
                 albumName={currentSong.albumName}

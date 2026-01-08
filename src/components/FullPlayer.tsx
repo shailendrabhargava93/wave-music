@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   Box, 
   Typography, 
@@ -51,6 +51,7 @@ interface FullPlayerProps {
   onRepeatModeChange?: (mode: 'off' | 'all' | 'one') => void;
   shuffleMode?: boolean;
   onShuffleModeChange?: (shuffle: boolean) => void;
+  onReorder?: (newOrder: Song[]) => void;
   // Song details for info popup
   albumId?: string;
   albumName?: string;
@@ -90,6 +91,7 @@ const FullPlayer: React.FC<FullPlayerProps> = ({
   year,
   language,
   source
+  , onReorder
 }) => {
   const [isFavorite, setIsFavorite] = useState(false);
   const [infoDialogOpen, setInfoDialogOpen] = useState(false);
@@ -98,6 +100,11 @@ const FullPlayer: React.FC<FullPlayerProps> = ({
   const [upNextOpen, setUpNextOpen] = useState(false);
   const [suggestions, setSuggestions] = useState<Song[]>([]);
   const [suggestionsLoading, setSuggestionsLoading] = useState(false);
+  // Info drawer resize state (match UpNext behavior)
+  const [infoMaxHeight, setInfoMaxHeight] = useState<number>(60); // percent of viewport
+  const infoDraggingRef = useRef(false);
+  const infoStartYRef = useRef<number>(0);
+  const infoStartHeightRef = useRef<number>(60);
 
   // Merge queue with suggestions for Up Next display
   // Merge queue with suggestions for Up Next display and dedupe by id (keep first occurrence)
@@ -182,6 +189,58 @@ const FullPlayer: React.FC<FullPlayerProps> = ({
     fetchAlbumSongs();
   }, [albumId, songId]);
 
+  // Info Drawer drag handlers (mirror UpNext behavior)
+  useEffect(() => {
+    let rafId: number | null = null;
+    const handleTouchMove = (ev: TouchEvent) => {
+      if (!infoDraggingRef.current) return;
+      const touch = ev.touches[0];
+      const dy = infoStartYRef.current - touch.clientY;
+      const compute = () => {
+        const newHeight = Math.min(90, Math.max(30, infoStartHeightRef.current + (dy / window.innerHeight) * 100));
+        setInfoMaxHeight(newHeight);
+        rafId = null;
+      };
+      if (rafId == null) rafId = requestAnimationFrame(compute);
+    };
+
+    const handleMouseMove = (ev: MouseEvent) => {
+      if (!infoDraggingRef.current) return;
+      const dy = infoStartYRef.current - ev.clientY;
+      const compute = () => {
+        const newHeight = Math.min(90, Math.max(30, infoStartHeightRef.current + (dy / window.innerHeight) * 100));
+        setInfoMaxHeight(newHeight);
+        rafId = null;
+      };
+      if (rafId == null) rafId = requestAnimationFrame(compute);
+    };
+
+    const stopDrag = () => {
+      infoDraggingRef.current = false;
+      if (rafId) {
+        cancelAnimationFrame(rafId);
+        rafId = null;
+      }
+      setInfoMaxHeight(prev => {
+        if (prev >= 75) return 100;
+        if (prev <= 35) return 35;
+        return prev;
+      });
+    };
+
+    window.addEventListener('touchmove', handleTouchMove);
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('touchend', stopDrag);
+    window.addEventListener('mouseup', stopDrag);
+
+    return () => {
+      window.removeEventListener('touchmove', handleTouchMove);
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('touchend', stopDrag);
+      window.removeEventListener('mouseup', stopDrag);
+    };
+  }, []);
+
   // Toggle favourite status
   const toggleFavorite = async () => {
     if (!songId) return;
@@ -236,6 +295,20 @@ const FullPlayer: React.FC<FullPlayerProps> = ({
     if (onTogglePlay) {
       onTogglePlay();
     }
+  };
+
+  const startInfoDragTouch = (clientY: number) => {
+    infoDraggingRef.current = true;
+    infoStartYRef.current = clientY;
+    infoStartHeightRef.current = infoMaxHeight;
+  };
+
+  const handleInfoTouchStart = (e: React.TouchEvent) => {
+    startInfoDragTouch(e.touches[0].clientY);
+  };
+
+  const handleInfoMouseDown = (e: React.MouseEvent) => {
+    startInfoDragTouch(e.clientY);
   };
 
   return (
@@ -543,9 +616,12 @@ const FullPlayer: React.FC<FullPlayerProps> = ({
             onSongSelect(song, remainingSongs);
           }
         }}
-        onReorder={(newOrder) => {
-          // Parent `App` should wire this to actually persist reordered queue.
-        }}
+          onReorder={(updated: Song[]) => {
+            if (!onReorder) return;
+            // Forward the full updated order to the app-level handler so it can
+            // derive and persist the new queue/context ordering as needed.
+            onReorder(updated);
+          }}
       />
 
       {/* Song Info Drawer */}
@@ -555,18 +631,30 @@ const FullPlayer: React.FC<FullPlayerProps> = ({
         anchor="bottom"
         PaperProps={{
           sx: {
-            bgcolor: 'background.paper',
             borderRadius: '16px 16px 0 0',
+            maxHeight: `${infoMaxHeight}vh`,
+            bgcolor: 'background.paper',
+            display: 'flex',
+            flexDirection: 'column',
           }
         }}
       >
+        {/* Drag handle for Info Drawer */}
+        <Box sx={{ display: 'flex', justifyContent: 'center', py: 0.75, cursor: 'ns-resize' }}>
+          <Box
+            onTouchStart={handleInfoTouchStart}
+            onMouseDown={handleInfoMouseDown}
+            sx={{ width: 48, height: 6, borderRadius: 3, bgcolor: 'divider' }}
+          />
+        </Box>
+
         <Box sx={{ 
-          bgcolor: 'background.default',
           color: 'text.primary',
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
-          p: 1,
+          px: 2,
+          py: 0.75,
           borderBottom: '1px solid',
           borderColor: 'divider'
         }}>
@@ -580,7 +668,7 @@ const FullPlayer: React.FC<FullPlayerProps> = ({
             <CloseIcon fontSize="small" />
           </IconButton>
         </Box>
-        <Box sx={{ bgcolor: 'background.paper', p: 1, maxHeight: '60vh', overflowY: 'auto' }}>
+        <Box sx={{ p: 1, pl: 2, maxHeight: '60vh', overflowY: 'auto' }}>
           <List sx={{ p: 0 }}>
             <ListItem sx={{ px: 0, py: 0.25 }}>
               <ListItemText
