@@ -22,6 +22,7 @@ import PersonIcon from '@mui/icons-material/Person';
 import MoreVertIcon from '@mui/icons-material/MoreVert';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import SongItem from '../components/SongItem';
+import SongItemSkeleton from '../components/SongItemSkeleton';
 import {
   FAVOURITE_ALBUMS_KEY,
   FAVOURITE_PLAYLISTS_KEY,
@@ -30,6 +31,7 @@ import {
   persistFavourites,
   readFavourites,
 } from '../services/storage';
+import { decodeHtmlEntities } from '../utils/normalize';
 
 interface FavouriteSong {
   id: string;
@@ -75,6 +77,7 @@ const FavouritesPage: React.FC<FavouritesPageProps> = ({ onSongSelect, onAlbumSe
   const [favouriteAlbums, setFavouriteAlbums] = useState<FavouriteAlbum[]>([]);
   const [favouritePlaylists, setFavouritePlaylists] = useState<FavouritePlaylist[]>([]);
   const [favouriteArtists, setFavouriteArtists] = useState<FavouriteArtist[]>([]);
+  const [loading, setLoading] = useState(true);
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [selectedItem, setSelectedItem] = useState<any>(null);
 
@@ -84,6 +87,9 @@ const FavouritesPage: React.FC<FavouritesPageProps> = ({ onSongSelect, onAlbumSe
     loadFavouriteAlbums();
     loadFavouritePlaylists();
     loadFavouriteArtists();
+    // Ensure loading cleared after initial load attempts
+    const timer = setTimeout(() => setLoading(false), 250);
+    return () => clearTimeout(timer);
   }, []);
 
   const loadFavourites = async () => {
@@ -200,12 +206,7 @@ const FavouritesPage: React.FC<FavouritesPageProps> = ({ onSongSelect, onAlbumSe
     handleMenuClose();
   };
 
-  // Decode HTML entities in strings
-  const decodeHtmlEntities = (text: string): string => {
-    const textarea = document.createElement('textarea');
-    textarea.innerHTML = text;
-    return textarea.value;
-  };
+  // use shared `decodeHtmlEntities` from utils
 
   const formatDate = (timestamp: number) => {
     const date = new Date(timestamp);
@@ -342,7 +343,13 @@ const FavouritesPage: React.FC<FavouritesPageProps> = ({ onSongSelect, onAlbumSe
         {/* Songs Tab */}
         {activeTab === 0 && (
           <>
-            {favourites.length === 0 ? (
+            {loading ? (
+              <Box sx={{ px: 2 }}>
+                {Array.from({ length: 6 }).map((_, i) => (
+                  <SongItemSkeleton key={i} />
+                ))}
+              </Box>
+            ) : favourites.length === 0 ? (
               <Box
                 sx={{
                   display: 'flex',

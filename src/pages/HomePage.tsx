@@ -20,6 +20,7 @@ import Header from '../components/Header';
 import { Song } from '../types/api';
 import { SoundChartsItem } from '../services/soundChartsApi';
 import { saavnApi } from '../services/saavnApi';
+import { decodeHtmlEntities } from '../utils/normalize';
 import AlbumIcon from '@mui/icons-material/Album';
 import PlaylistPlayIcon from '@mui/icons-material/PlaylistPlay';
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
@@ -82,13 +83,6 @@ const getHighQualityImage = (images?: Array<{ quality?: string; url?: string; li
 const normalizeArtistName = (raw?: string): string => {
   const decoded = decodeHtmlEntities(raw || '');
   return decoded.replace(/\s+/g, ' ').trim();
-};
-
-const decodeHtmlEntities = (text: string): string => {
-  if (!text || typeof document === 'undefined') return text;
-  const textarea = document.createElement('textarea');
-  textarea.innerHTML = text;
-  return textarea.value;
 };
 
 const HomePage: React.FC<HomePageProps> = ({

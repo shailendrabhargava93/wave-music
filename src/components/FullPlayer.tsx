@@ -29,6 +29,7 @@ import UpNextDrawer from './UpNextDrawer';
 import { saavnApi } from '../services/saavnApi';
 import { Song } from '../types/api';
 import { FAVOURITE_SONGS_KEY, persistFavourites, readFavourites } from '../services/storage';
+import { decodeHtmlEntities } from '../utils/normalize';
 
 interface FullPlayerProps {
   open: boolean;
@@ -123,12 +124,7 @@ const FullPlayer: React.FC<FullPlayerProps> = ({
   })();
   const currentProgress = Math.min(externalProgress ?? 0, duration ?? 0);
 
-  // Decode HTML entities in strings
-  const decodeHtmlEntities = (text: string): string => {
-    const textarea = document.createElement('textarea');
-    textarea.innerHTML = text;
-    return textarea.value;
-  };
+  // use shared `decodeHtmlEntities` from utils
 
   // Check if current song is in favourites
   useEffect(() => {

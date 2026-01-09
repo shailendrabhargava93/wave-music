@@ -12,6 +12,7 @@ import MusicNoteIcon from '@mui/icons-material/MusicNote';
 import DragIndicatorIcon from '@mui/icons-material/DragIndicator';
 import { Song } from '../types/api';
 import SongItem from './SongItem';
+import { decodeHtmlEntities } from '../utils/normalize';
 
 interface UpNextDrawerProps {
   open: boolean;
@@ -150,17 +151,7 @@ const UpNextDrawer: React.FC<UpNextDrawerProps> = ({
     return images[0]?.url || images[0]?.link || '';
   };
 
-  const decodeHtmlEntities = (text: string): string => {
-    if (!text) return text;
-    const textarea = document.createElement('textarea');
-    textarea.innerHTML = text;
-    const decoded = textarea.value;
-    if (decoded.includes('&')) {
-      textarea.innerHTML = decoded;
-      return textarea.value;
-    }
-    return decoded;
-  };
+  // use shared `decodeHtmlEntities` from utils
 
   const handleSongClick = (song: Song) => {
     onSongSelect(song);

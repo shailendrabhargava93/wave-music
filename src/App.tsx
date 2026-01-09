@@ -8,25 +8,29 @@ import InstallPrompt from './components/InstallPrompt';
 import HomePage from './pages/HomePage';
 import SettingsPage from './pages/SettingsPage';
 import WelcomeScreen from './pages/WelcomeScreen';
+import Splash from './components/Splash';
 import PlaylistPage from './pages/PlaylistPage';
 import FavouritesPage from './pages/FavouritesPage';
 import AllSongsPage from './pages/AllSongsPage';
 import RecentlyPlayedPage from './pages/RecentlyPlayedPage';
 import ExplorePage from './pages/ExplorePage';
 import ArtistsPage from './pages/ArtistsPage';
+import ArtistPage from './pages/ArtistPage';
 import { Song, CurrentSong } from './types/api';
 import { saavnApi } from './services/saavnApi';
 import { soundChartsApi, SoundChartsItem } from './services/soundChartsApi';
 import SearchPage from './pages/SearchPage';
 import { saveSongMetadata, saveDownloadRecord, setMeta, getDownloadRecord, getMeta, migrateLocalStorage } from './services/storage';
 import { subscribeNetworkStatus } from './services/networkStatus';
+import {
+  decodeHtmlEntities,
+  joinArtistNames,
+  joinArtistIds,
+  normalizeText,
+  normalizeArtist,
+  similarityScore,
+} from './utils/normalize';
 
-const decodeHtmlEntities = (text: string): string => {
-  if (!text) return text;
-  const textarea = document.createElement('textarea');
-  textarea.innerHTML = text;
-  return textarea.value;
-};
 
 interface ChartSongWithSaavn extends SoundChartsItem {
   saavnData?: Song;
@@ -46,17 +50,7 @@ interface SessionData {
   isPlaying?: boolean;
 }
 
-const joinArtistNames = (artists?: ArtistReference[]) =>
-  (artists ?? [])
-    .map(artist => artist?.name?.trim() ?? '')
-    .filter(name => name)
-    .join(', ');
-
-const joinArtistIds = (artists?: ArtistReference[]) =>
-  (artists ?? [])
-    .map(artist => artist?.id?.trim() ?? '')
-    .filter(id => id)
-    .join(',');
+// Normalization helpers are imported from `src/utils/normalize.ts`
 
 function App() {
   // Welcome screen state - check if user has visited before
@@ -64,6 +58,9 @@ function App() {
     const hasVisited = localStorage.getItem('hasVisited');
     return !hasVisited;
   });
+
+  // Splash screen visible briefly on cold start
+  const [showSplash, setShowSplash] = useState(true);
 
   // Theme state with localStorage persistence
   const [isDarkMode, setIsDarkMode] = useState(() => {
@@ -168,6 +165,10 @@ function App() {
   
   useEffect(() => {
     migrateLocalStorage();
+
+    // Hide the splash after a short duration (unless user disables)
+    const splashTimeout = setTimeout(() => setShowSplash(false), 1400);
+    return () => clearTimeout(splashTimeout);
   }, []);
 
   // Subscribe to API/network failure messages and show snackbars
@@ -218,6 +219,7 @@ function App() {
     image: string;
     type?: 'playlist' | 'album' | 'artist';
     sourceTab?: string;
+    previous?: { id: string; name: string; image: string; type?: 'playlist' | 'album' | 'artist'; sourceTab?: string; previous?: any } | null;
   } | null>(null);
   
   // View All Chart Songs state
@@ -484,46 +486,9 @@ function App() {
 
   const searchSongOnSaavn = async (item: SoundChartsItem): Promise<Song | undefined> => {
     try {
-      // Normalize text for better comparison
-      const normalizeText = (text: string) => 
-        text.toLowerCase()
-          .replace(/\s+/g, ' ')
-          .replace(/[^\w\s]/g, '')
-          .trim();
-      
-      const normalizeArtist = (name: string) => 
-        name.toLowerCase().replace(/[^a-z0-9]/g, '');
-      
+      // Use shared normalization helpers
       const targetSongName = normalizeText(item.song.name);
       const targetArtist = normalizeArtist(item.song.creditName);
-      
-      // Calculate similarity score between two strings
-      const similarityScore = (str1: string, str2: string): number => {
-        const longer = str1.length > str2.length ? str1 : str2;
-        const shorter = str1.length > str2.length ? str2 : str1;
-        if (longer.length === 0) return 1.0;
-        const editDistance = (s1: string, s2: string): number => {
-          const costs: number[] = [];
-          for (let i = 0; i <= s1.length; i++) {
-            let lastValue = i;
-            for (let j = 0; j <= s2.length; j++) {
-              if (i === 0) {
-                costs[j] = j;
-              } else if (j > 0) {
-                let newValue = costs[j - 1];
-                if (s1.charAt(i - 1) !== s2.charAt(j - 1)) {
-                  newValue = Math.min(Math.min(newValue, lastValue), costs[j]) + 1;
-                }
-                costs[j - 1] = lastValue;
-                lastValue = newValue;
-              }
-            }
-            if (i > 0) costs[s2.length] = lastValue;
-          }
-          return costs[s2.length];
-        };
-        return (longer.length - editDistance(longer, shorter)) / longer.length;
-      };
       
       // First attempt: Search with just song title
       let searchResults = await saavnApi.searchSongs(item.song.name, 15);
@@ -942,14 +907,19 @@ function App() {
   };
 
   const handleArtistSelect = (artistId: string, artistName: string, artistImage: string) => {
-    setSelectedPlaylist({ id: artistId, name: artistName, image: artistImage, type: 'artist', sourceTab: activeTab });
+    setSelectedPlaylist(prev => ({ id: artistId, name: artistName, image: artistImage, type: 'artist', sourceTab: activeTab, previous: prev ?? null }));
   };
 
   const handleAlbumSelect = (albumId: string, albumName: string, albumImage: string) => {
-    setSelectedPlaylist({ id: albumId, name: albumName, image: albumImage, type: 'album', sourceTab: activeTab });
+    setSelectedPlaylist(prev => ({ id: albumId, name: albumName, image: albumImage, type: 'album', sourceTab: activeTab, previous: prev ?? null }));
   };
 
   const handleBackFromPlaylist = () => {
+    // If we have a previous selected playlist (e.g., navigated artist -> album), restore it
+    if (selectedPlaylist?.previous) {
+      setSelectedPlaylist(selectedPlaylist.previous as any);
+      return;
+    }
     const sourceTab = selectedPlaylist?.sourceTab || 'home';
     setSelectedPlaylist(null);
     setActiveTab(sourceTab);
@@ -1202,6 +1172,21 @@ function App() {
 
     // Show playlist/album page if selected
     if (selectedPlaylist) {
+      if (selectedPlaylist.type === 'artist') {
+        return (
+          <ArtistPage
+            artistId={selectedPlaylist.id}
+            artistName={selectedPlaylist.name}
+            artistImage={selectedPlaylist.image}
+            onBack={handleBackFromPlaylist}
+            onSongSelect={handleSongSelect}
+            onAddToQueue={handleAddToQueue}
+            onPlayNext={handlePlayNext}
+            onAlbumSelect={handleAlbumSelect}
+          />
+        );
+      }
+
       return (
         <PlaylistPage
           playlistId={selectedPlaylist.id}
@@ -1296,7 +1281,9 @@ function App() {
       <CssBaseline />
       {/* Small offline / fetch failure indicator at bottom */}
       {/* Offline banner moved into BottomNav to keep it visible across all screens */}
-      {showWelcome ? (
+      {showSplash ? (
+        <Splash />
+      ) : showWelcome ? (
         <WelcomeScreen onGetStarted={handleGetStarted} />
       ) : (
         <Box 

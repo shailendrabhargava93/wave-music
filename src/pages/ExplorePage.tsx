@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Box, Typography, Chip, IconButton, CircularProgress } from '@mui/material';
+import { Box, Typography, Chip, IconButton, Skeleton, Container } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import { saavnApi } from '../services/saavnApi';
+import { decodeHtmlEntities } from '../utils/normalize';
+import SongItemSkeleton from '../components/SongItemSkeleton';
 
 interface ExplorePageProps {
   onPlaylistSelect: (playlistId: string, playlistName: string, playlistImage: string) => void;
@@ -126,57 +128,67 @@ const ExplorePage: React.FC<ExplorePageProps> = ({ onPlaylistSelect }) => {
     return images[images.length - 1]?.url || '';
   };
 
-  const decodeHtmlEntities = (text: string): string => {
-    if (!text) return text;
-    const textarea = document.createElement('textarea');
-    textarea.innerHTML = text;
-    return textarea.value;
-  };
+  // use shared `decodeHtmlEntities` from utils
 
   return (
     <Box sx={{ pb: 10, minHeight: '100vh', pt: 0 }}>
       {selectedCategory ? (
         <>
-          {/* Sticky header - match AllSongsPage style */}
+          {/* Fixed header - match AllSongsPage style */}
           <Box
             sx={(theme) => ({
-              position: 'sticky',
+              position: 'fixed',
               top: 0,
+              left: 0,
+              right: 0,
               zIndex: theme.zIndex.appBar,
-              display: 'flex',
-              alignItems: 'center',
-              gap: 1,
-              px: 1.25,
-              py: 0.325,
-              justifyContent: 'flex-start',
               width: '100%',
               backgroundColor: theme.palette.background.default,
               boxShadow: `0 1px 6px ${theme.palette.mode === 'dark' ? 'rgba(0,0,0,0.6)' : 'rgba(0,0,0,0.1)'}`,
               mt: 0,
-              mb: 1,
+              py: 0.325,
             })}
           >
-            <IconButton
-              onClick={handleBack}
-              sx={{
-                color: 'text.primary',
-                '&:hover': {
-                  bgcolor: 'action.hover',
-                },
-              }}
-            >
-              <ArrowBackIcon />
-            </IconButton>
-            <Typography variant="h6" sx={{ color: 'text.primary', fontWeight: 600, fontSize: '1.1rem', pl: 0.5 }} noWrap>
-              {selectedCategory}
-            </Typography>
+            <Container maxWidth="sm" sx={{ display: 'flex', alignItems: 'center', gap: 1, px: { xs: 1, sm: 1.25 } }}>
+              <IconButton
+                onClick={handleBack}
+                sx={{
+                  color: 'text.primary',
+                  '&:hover': {
+                    bgcolor: 'action.hover',
+                  },
+                }}
+              >
+                <ArrowBackIcon />
+              </IconButton>
+
+              <Typography variant="h6" sx={{ color: 'text.primary', fontWeight: 600, fontSize: '1.1rem', pl: 0.5 }} noWrap>
+                {selectedCategory}
+              </Typography>
+            </Container>
           </Box>
+
+          {/* Spacer to offset fixed header height so content doesn't go under it */}
+          <Box sx={{ height: { xs: 56, sm: 64 }, width: '100%' }} />
 
           <Box sx={{ px: 2, pb: 8 }}>
             {/* Loading State */}
             {loading && (
-              <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}>
-                <CircularProgress />
+              <Box>
+                {/* Header skeleton to match other pages' sticky header */}
+                <Box sx={{ position: 'sticky', top: 0, zIndex: (t) => t.zIndex.appBar, px: 1.25, py: 0.5, bgcolor: 'background.default' }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <Skeleton variant="circular" width={40} height={40} />
+                    <Skeleton width="40%" height={28} />
+                  </Box>
+                </Box>
+
+                {/* Playlist skeleton list */}
+                <Box sx={{ px: 2, pt: 2 }}>
+                  {[...Array(6)].map((_, i) => (
+                    <SongItemSkeleton key={i} />
+                  ))}
+                </Box>
               </Box>
             )}
 

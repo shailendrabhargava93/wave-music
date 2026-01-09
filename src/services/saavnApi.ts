@@ -6,12 +6,14 @@ const getInflight = () => {
   const root = (saavnApi as any)._inflight as Record<string, Map<string, Promise<any>>>;
   root.playlists = root.playlists ?? new Map<string, Promise<any>>();
   root.albums = root.albums ?? new Map<string, Promise<any>>();
+  root.artists = root.artists ?? new Map<string, Promise<any>>();
   root.searches = root.searches ?? new Map<string, Promise<any>>();
   root.songsByIds = root.songsByIds ?? new Map<string, Promise<any>>();
   root.launches = root.launches ?? new Map<string, Promise<any>>();
   return root as {
     playlists: Map<string, Promise<any>>;
     albums: Map<string, Promise<any>>;
+    artists: Map<string, Promise<any>>;
     searches: Map<string, Promise<any>>;
     songsByIds: Map<string, Promise<any>>;
     launches: Map<string, Promise<any>>;
@@ -157,13 +159,27 @@ export const saavnApi = {
 
   getArtistSongs: async (artistId: string, page: number = 0, sortBy: string = 'popularity', sortOrder: string = 'desc'): Promise<any> => {
     try {
-      const response = await fetch(`${BASE_URL}/artists/${artistId}/songs?page=${page}&sortBy=${sortBy}&sortOrder=${sortOrder}`);
-      if (!response.ok) {
-        throw new Error('Failed to fetch artist songs');
+      const inflight = getInflight().artists;
+      const key = `${artistId}::${page}::${sortBy}::${sortOrder}`;
+      if (inflight.has(key)) return inflight.get(key)!;
+
+      const promise = (async () => {
+        const response = await fetch(`${BASE_URL}/artists/${artistId}/songs?page=${page}&sortBy=${sortBy}&sortOrder=${sortOrder}`);
+        if (!response.ok) {
+          throw new Error('Failed to fetch artist songs');
+        }
+        const data = await response.json();
+        setLastFetchFailed(false);
+        return data;
+      })();
+
+      inflight.set(key, promise);
+      try {
+        const res = await promise;
+        return res;
+      } finally {
+        inflight.delete(key);
       }
-      const data = await response.json();
-      setLastFetchFailed(false);
-      return data;
     } catch (error) {
       console.error('Error fetching artist songs:', error);
       markFetchFailed();
@@ -226,6 +242,36 @@ export const saavnApi = {
       }
     } catch (error) {
       console.error('Error fetching album:', error);
+      markFetchFailed();
+      throw error;
+    }
+  },
+
+  getArtistById: async (artistId: string): Promise<any> => {
+    try {
+      const inflight = getInflight().artists;
+      const key = `artist_meta::${artistId}`;
+      if (inflight.has(key)) return inflight.get(key)!;
+
+      const promise = (async () => {
+        const response = await fetch(`${BASE_URL}/artists/${artistId}`);
+        if (!response.ok) {
+          throw new Error('Failed to fetch artist');
+        }
+        const data = await response.json();
+        setLastFetchFailed(false);
+        return data;
+      })();
+
+      inflight.set(key, promise);
+      try {
+        const res = await promise;
+        return res;
+      } finally {
+        inflight.delete(key);
+      }
+    } catch (error) {
+      console.error('Error fetching artist:', error);
       markFetchFailed();
       throw error;
     }

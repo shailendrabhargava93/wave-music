@@ -15,6 +15,7 @@ import {
   Menu,
   MenuItem,
   ListItemIcon,
+  Skeleton,
 } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
 import MusicNoteIcon from '@mui/icons-material/MusicNote';
@@ -27,12 +28,14 @@ import ClearAllIcon from '@mui/icons-material/ClearAll';
 import MoreVertIcon from '@mui/icons-material/MoreVert';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import SongItem from '../components/SongItem';
+import SongItemSkeleton from '../components/SongItemSkeleton';
 import QueueMusicIcon from '@mui/icons-material/QueueMusic';
 import PlaylistAddIcon from '@mui/icons-material/PlaylistAdd';
 import FavoriteIcon from '@mui/icons-material/Favorite';
 import { saavnApi } from '../services/saavnApi';
 import { Song } from '../types/api';
 import { FAVOURITE_SONGS_KEY, persistFavourites, readFavourites } from '../services/storage';
+import { decodeHtmlEntities } from '../utils/normalize';
 
 interface SearchPageProps {
   onSongSelect: (song: Song, contextSongs?: Song[]) => void;
@@ -133,19 +136,7 @@ const SearchPage: React.FC<SearchPageProps> = ({ onSongSelect, onPlaylistSelect,
     localStorage.removeItem('recentSearches');
   };
 
-  // Decode HTML entities in strings
-  const decodeHtmlEntities = (text: string): string => {
-    if (!text) return text;
-    const textarea = document.createElement('textarea');
-    textarea.innerHTML = text;
-    const decoded = textarea.value;
-    // If still contains entities, try one more time
-    if (decoded.includes('&')) {
-      textarea.innerHTML = decoded;
-      return textarea.value;
-    }
-    return decoded;
-  };
+  // use shared `decodeHtmlEntities` from utils
 
   const handleSearch = useCallback(async (query: string) => {
     if (!query.trim() || query.trim().length < 3) {
@@ -159,7 +150,9 @@ const SearchPage: React.FC<SearchPageProps> = ({ onSongSelect, onPlaylistSelect,
 
     // Save to recent searches
     saveToRecentSearches(query);
-
+    // Ensure Songs tab is visible and UI reflects a search in-progress
+    setActiveTab(0);
+    setHasSearched(true);
     setLoading(true);
     try {
       // Call all APIs in parallel
@@ -445,22 +438,20 @@ const SearchPage: React.FC<SearchPageProps> = ({ onSongSelect, onPlaylistSelect,
         </Box>
       )}
 
-      {/* Loading State */}
+      {/* Loading State: show skeleton chips and song rows to match results layout */}
       {loading && (
-        <Box
-          sx={{
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            justifyContent: 'center',
-            minHeight: '40vh',
-            gap: 2,
-          }}
-        >
-          <CircularProgress size={48} sx={{ color: 'primary.main' }} />
-          <Typography variant="body1" sx={{ color: 'text.secondary' }}>
-            Searching...
-          </Typography>
+        <Box sx={{ px: 1 }}>
+          <Box sx={{ display: 'flex', gap: 1, mb: 2 }}>
+            {Array.from({ length: 3 }).map((_, i) => (
+              <Skeleton key={i} variant="rounded" width={84} height={32} />
+            ))}
+          </Box>
+
+          <Box>
+            {Array.from({ length: 6 }).map((_, i) => (
+              <SongItemSkeleton key={i} />
+            ))}
+          </Box>
         </Box>
       )}
 
@@ -544,7 +535,13 @@ const SearchPage: React.FC<SearchPageProps> = ({ onSongSelect, onPlaylistSelect,
           {/* Songs Tab */}
           {activeTab === 0 && (
             <Box>
-              {songs.length === 0 ? (
+              {loading ? (
+                <Box sx={{ px: 1 }}>
+                  {Array.from({ length: 6 }).map((_, i) => (
+                    <SongItemSkeleton key={i} />
+                  ))}
+                </Box>
+              ) : songs.length === 0 ? (
                 <Box
                   sx={{
                     display: 'flex',
