@@ -9,6 +9,19 @@ createRoot(document.getElementById('root')!).render(
   </StrictMode>,
 )
 
+// Remove pre-hydration splash if present
+try {
+  const splash = document.getElementById('preload-splash');
+  if (splash && splash.parentNode) {
+    // Fade out then remove for a smooth transition
+    splash.style.transition = 'opacity 300ms ease';
+    splash.style.opacity = '0';
+    setTimeout(() => splash.remove(), 350);
+  }
+} catch (err) {
+  // ignore
+}
+
 // Register PWA Service Worker
 import { registerSW } from 'virtual:pwa-register'
 

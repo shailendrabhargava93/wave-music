@@ -4,16 +4,17 @@ import {
   Typography,
   Avatar,
   IconButton,
-  CircularProgress,
   List,
   Menu,
   MenuItem,
   ListItemIcon,
   Container,
+  Skeleton,
 } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import MusicNoteIcon from '@mui/icons-material/MusicNote';
 import SongItem from '../components/SongItem';
+import SongItemSkeleton from '../components/SongItemSkeleton';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import FavoriteBorderIcon from '@mui/icons-material/FavoriteBorder';
 import FavoriteIcon from '@mui/icons-material/Favorite';
@@ -30,6 +31,7 @@ import {
   persistFavourites,
   readFavourites,
 } from '../services/storage';
+import { decodeHtmlEntities } from '../utils/normalize';
 
 const extractSongsFromArtistResponse = (response: any): any[] => {
   if (!response) return [];
@@ -118,6 +120,13 @@ const PlaylistPage: React.FC<PlaylistPageProps> = ({
     handleMenuClose();
   };
 
+  const handlePlayNow = () => {
+    if (selectedSong && onSongSelect) {
+      onSongSelect(selectedSong, songs);
+    }
+    handleMenuClose();
+  };
+
   const handlePlayNext = () => {
     if (selectedSong && onPlayNext) {
       onPlayNext(selectedSong);
@@ -201,19 +210,7 @@ const PlaylistPage: React.FC<PlaylistPageProps> = ({
     }
   };
 
-  // Decode HTML entities in strings
-  const decodeHtmlEntities = (text: string): string => {
-    if (!text) return text;
-    const textarea = document.createElement('textarea');
-    textarea.innerHTML = text;
-    const decoded = textarea.value;
-    // If still contains entities, try one more time
-    if (decoded.includes('&')) {
-      textarea.innerHTML = decoded;
-      return textarea.value;
-    }
-    return decoded;
-  };
+  // use shared `decodeHtmlEntities` from utils
 
   useEffect(() => {
     // Scroll to top when component mounts
@@ -353,23 +350,36 @@ const PlaylistPage: React.FC<PlaylistPageProps> = ({
           background: 'transparent',
         }}
       >
-        <Avatar
-          src={playlistImage}
-          variant="rounded"
-          sx={{
-            width: 160,
-            height: 160,
-            mb: 1.5,
-            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.2)',
-          }}
-        >
-          <PlayArrowIcon sx={{ fontSize: 80 }} />
-        </Avatar>
-        <Typography variant="body2" sx={{ color: 'text.secondary', mb: 1.5, fontSize: '0.85rem' }}>
-          {songs.length} songs
-        </Typography>
+        {loading ? (
+          <Skeleton variant="rounded" width={160} height={160} sx={{ mb: 1.5, borderRadius: 2 }} />
+        ) : (
+          <Avatar
+            src={playlistImage}
+            variant="rounded"
+            sx={{
+              width: 160,
+              height: 160,
+              mb: 1.5,
+              boxShadow: '0 4px 12px rgba(0, 0, 0, 0.2)',
+            }}
+          >
+            <PlayArrowIcon sx={{ fontSize: 80 }} />
+          </Avatar>
+        )}
+        {loading ? (
+          <Skeleton width={80} height={20} sx={{ mb: 1.5 }} />
+        ) : (
+          <Typography variant="body2" sx={{ color: 'text.secondary', mb: 1.5, fontSize: '0.85rem' }}>
+            {songs.length} songs
+          </Typography>
+        )}
         <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'center', mb: 0.5 }}>
-          {songs.length > 0 && (
+          {loading ? (
+            <>
+              <Skeleton variant="circular" width={36} height={36} />
+              <Skeleton variant="rounded" width={48} height={48} />
+            </>
+          ) : songs.length > 0 && (
             <>
               {/* shared lighter button style for shuffle and favourite */}
               <IconButton
@@ -427,24 +437,7 @@ const PlaylistPage: React.FC<PlaylistPageProps> = ({
         </Box>
       </Box>
 
-      {/* Loading State */}
-      {loading && (
-        <Box
-          sx={{
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            justifyContent: 'center',
-            minHeight: '40vh',
-            gap: 2,
-          }}
-        >
-          <CircularProgress size={48} sx={{ color: 'primary.main' }} />
-          <Typography variant="body1" sx={{ color: 'text.secondary' }}>
-            Loading playlist...
-          </Typography>
-        </Box>
-      )}
+      {/* Loading state: header skeleton handled inline below; songs list skeletons rendered further down */}
 
       {/* Error State */}
       {error && !loading && (
@@ -469,6 +462,14 @@ const PlaylistPage: React.FC<PlaylistPageProps> = ({
       )}
 
       {/* Songs List */}
+      {loading && (
+        <Box sx={{ px: 1 }}>
+          {Array.from({ length: 6 }).map((_, i) => (
+            <SongItemSkeleton key={i} />
+          ))}
+        </Box>
+      )}
+
       {!loading && !error && songs.length > 0 && (
         <Box sx={{ px: 1 }}>
           <List sx={{ bgcolor: 'transparent', p: 0 }}>
@@ -506,7 +507,7 @@ const PlaylistPage: React.FC<PlaylistPageProps> = ({
               horizontal: 'right',
             }}
           >
-            <MenuItem onClick={handlePlayNext}>
+            <MenuItem onClick={handlePlayNow}>
               <ListItemIcon>
                 <PlayArrowIcon fontSize="small" />
               </ListItemIcon>

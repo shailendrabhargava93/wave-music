@@ -20,6 +20,7 @@ import Header from '../components/Header';
 import { Song } from '../types/api';
 import { SoundChartsItem } from '../services/soundChartsApi';
 import { saavnApi } from '../services/saavnApi';
+import { decodeHtmlEntities } from '../utils/normalize';
 import AlbumIcon from '@mui/icons-material/Album';
 import PlaylistPlayIcon from '@mui/icons-material/PlaylistPlay';
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
@@ -34,6 +35,7 @@ interface HomePageProps {
   onAlbumSelect: (albumId: string, albumName: string, albumImage: string) => void;
   onPlaylistSelect: (playlistId: string, playlistName: string, playlistImage: string) => void;
   onArtistSelect: (artistId: string, artistName: string, artistImage: string) => void;
+  onViewAllArtists?: () => void;
   onRecentlyPlayedClick?: () => void;
   onSettingsClick?: () => void;
   onAddToQueue?: (song: Song) => void;
@@ -53,9 +55,9 @@ const TRENDING_PLAYLISTS_KEY = 'trendingPlaylists';
 const TRENDING_PLAYLISTS_TIMESTAMP_KEY = 'trendingPlaylistsTimestamp';
 const TOP_CHARTS_KEY = 'topCharts';
 const TOP_CHARTS_TIMESTAMP_KEY = 'topChartsTimestamp';
-const TOP_ARTISTS_QUERY = 'latest';
-const TOP_ARTISTS_LIMIT = 12;
-const TOP_ARTISTS_SEARCH_LIMIT = 30;
+const RECOMMENDED_ARTISTS_KEY = 'recommendedArtists';
+const RECOMMENDED_ARTISTS_TIMESTAMP_KEY = 'recommendedArtistsTimestamp';
+const ARTIST_AVATAR_SIZE = 110;
 
 interface ArtistPreview {
   id?: string;
@@ -83,50 +85,12 @@ const normalizeArtistName = (raw?: string): string => {
   return decoded.replace(/\s+/g, ' ').trim();
 };
 
-
-const collectArtistImageSources = (candidate: any): Array<{ quality?: string; url?: string; link?: string }> => {
-  const sources: Array<{ quality?: string; url?: string; link?: string }> = [];
-  if (!candidate) return sources;
-  if (Array.isArray(candidate.image)) {
-    sources.push(...candidate.image.filter(Boolean));
-  }
-  if (Array.isArray(candidate.images)) {
-    sources.push(...candidate.images.filter(Boolean));
-  }
-  if (candidate.imageUrl) {
-    sources.push({ link: candidate.imageUrl });
-  }
-  if (candidate.cover) {
-    sources.push({ link: candidate.cover });
-  }
-  if (candidate.thumbnail) {
-    sources.push({ link: candidate.thumbnail });
-  }
-  if (candidate.avatar) {
-    if (typeof candidate.avatar === 'string') {
-      sources.push({ link: candidate.avatar });
-    } else if (candidate.avatar?.url) {
-      sources.push({ link: candidate.avatar.url });
-    }
-  }
-  if (candidate.avatarUrl) {
-    sources.push({ link: candidate.avatarUrl });
-  }
-  return sources;
-};
-
-const decodeHtmlEntities = (text: string): string => {
-  if (!text || typeof document === 'undefined') return text;
-  const textarea = document.createElement('textarea');
-  textarea.innerHTML = text;
-  return textarea.value;
-};
-
 const HomePage: React.FC<HomePageProps> = ({
   onSongSelect,
   chartSongs,
   chartSongsLoading,
   onViewAllCharts,
+  onViewAllArtists,
   onAlbumSelect,
   onPlaylistSelect,
   onArtistSelect,
@@ -149,9 +113,10 @@ const HomePage: React.FC<HomePageProps> = ({
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [selectedSong, setSelectedSong] = useState<ChartSongWithSaavn | null>(null);
   const [favouriteSongs, setFavouriteSongs] = useState<string[]>([]);
-  const [topArtists, setTopArtists] = useState<ArtistPreview[]>([]);
-  const [topArtistsLoading, setTopArtistsLoading] = useState(false);
-  const [topArtistsError, setTopArtistsError] = useState<string | null>(null);
+  const [recommendedArtists, setRecommendedArtists] = useState<ArtistPreview[]>([]);
+  const [recommendedArtistsLoading, setRecommendedArtistsLoading] = useState(false);
+  const [recommendedArtistsError, setRecommendedArtistsError] = useState<string | null>(null);
+  const artistsContainerRef = React.useRef<HTMLDivElement | null>(null);
 
   // Fetch latest albums and trending playlists using the launch API
   useEffect(() => {
@@ -293,6 +258,25 @@ const HomePage: React.FC<HomePageProps> = ({
           await setMeta(TOP_CHARTS_KEY, chartsMapped);
           await setMeta(TOP_CHARTS_TIMESTAMP_KEY, Date.now());
         }
+
+        // Recommended artists from launch payload
+        const artistsSource: any[] = Array.isArray(payload.artist_recos) ? payload.artist_recos : [];
+        const artistsMapped: ArtistPreview[] = artistsSource.map((item: any) => {
+          const name = item.name || item.title || item.artist || '';
+          const imageArr = normalizeImage(item.image ?? item.images ?? item.imageUrl ?? item.avatar ?? item.thumbnail ?? item.cover);
+          const image = getHighQualityImage(Array.isArray(imageArr) ? imageArr : []);
+          return { id: item.id || item.artistId || item.sid || name, name: normalizeArtistName(name), image };
+        });
+
+        if (artistsMapped.length > 0) {
+          setRecommendedArtists(artistsMapped);
+          try {
+            await setMeta(RECOMMENDED_ARTISTS_KEY, artistsMapped);
+            await setMeta(RECOMMENDED_ARTISTS_TIMESTAMP_KEY, Date.now());
+          } catch (err) {
+            // ignore cache write failures
+          }
+        }
       } catch (error) {
         console.warn('Failed to load launch data', error);
       } finally {
@@ -322,66 +306,30 @@ const HomePage: React.FC<HomePageProps> = ({
     loadFavouriteIds();
   }, []);
 
+  // Load recommended artists from cache if available (launch already writes to cache)
   useEffect(() => {
     let isMounted = true;
-    const fetchTopArtists = async () => {
+    const loadCachedRecommended = async () => {
       try {
-        setTopArtistsLoading(true);
-        setTopArtistsError(null);
-        
-        // Check cache first
-        const cachedArtists = await getMeta('topArtists');
-        const cachedTimestamp = await getMeta('topArtistsTimestamp');
+        setRecommendedArtistsLoading(true);
+        setRecommendedArtistsError(null);
+        const cached = await getMeta(RECOMMENDED_ARTISTS_KEY);
+        const cachedTimestamp = await getMeta(RECOMMENDED_ARTISTS_TIMESTAMP_KEY);
         const now = Date.now();
-        const CACHE_DURATION = 24 * 60 * 60 * 1000; // 24 hours
-        const parsedCachedTimestamp = typeof cachedTimestamp === 'number' ? cachedTimestamp : Number(cachedTimestamp);
-        
-        if (Array.isArray(cachedArtists) && Number.isFinite(parsedCachedTimestamp) && (now - parsedCachedTimestamp < CACHE_DURATION)) {
-          if (isMounted) {
-            setTopArtists(cachedArtists);
-            setTopArtistsLoading(false);
-          }
-          return;
+        const parsed = typeof cachedTimestamp === 'number' ? cachedTimestamp : Number(cachedTimestamp);
+        const CACHE_DURATION = 24 * 60 * 60 * 1000;
+        if (Array.isArray(cached) && Number.isFinite(parsed) && (now - parsed < CACHE_DURATION)) {
+          if (isMounted) setRecommendedArtists(cached as ArtistPreview[]);
         }
-        
-        // Fetch fresh data
-        const response = await saavnApi.searchArtists(TOP_ARTISTS_QUERY, TOP_ARTISTS_SEARCH_LIMIT);
-        const candidates = response?.data?.results ?? [];
-        const curated: ArtistPreview[] = [];
-        const seen = new Set<string>();
-        for (const candidate of candidates) {
-          if (!candidate?.id || seen.has(candidate.id)) continue;
-          seen.add(candidate.id);
-          const normalizedName = normalizeArtistName(candidate.name);
-          if (!normalizedName) continue;
-          const image = getHighQualityImage(collectArtistImageSources(candidate));
-          curated.push({ id: candidate.id, name: normalizedName, image });
-          if (curated.length >= TOP_ARTISTS_LIMIT) break;
-        }
-        
-        // Cache the results
-        await setMeta('topArtists', curated);
-        await setMeta('topArtistsTimestamp', now);
-        
-        if (isMounted) {
-          setTopArtists(curated);
-        }
-      } catch (error) {
-        console.warn('Failed to load top artists', error);
-        if (isMounted) {
-          setTopArtistsError('Unable to load artists right now');
-        }
+      } catch (err) {
+        console.warn('Failed to load recommended artists from cache', err);
+        if (isMounted) setRecommendedArtistsError('Unable to load artists right now');
       } finally {
-        if (isMounted) {
-          setTopArtistsLoading(false);
-        }
+        if (isMounted) setRecommendedArtistsLoading(false);
       }
     };
-
-    fetchTopArtists();
-    return () => {
-      isMounted = false;
-    };
+    loadCachedRecommended();
+    return () => { isMounted = false; };
   }, []);
 
   const handleSongClick = (song: ChartSongWithSaavn) => {
@@ -614,7 +562,6 @@ const HomePage: React.FC<HomePageProps> = ({
                   key={chart.id}
                   onClick={() => {
                     // If chart item has song id, attempt to play first song via onSongSelect
-                    const songCandidate = chart._raw?.song || chart._raw?.track || chart._raw?.songId || chart._raw?.trackId;
                     // Fallback: if there's a playlist id, open playlist
                     if (chart._raw?.type === 'playlist' && chart.id && onPlaylistSelect) {
                       onPlaylistSelect(chart.id, chart.name, getHighQualityImage(chart.image));
@@ -767,76 +714,51 @@ const HomePage: React.FC<HomePageProps> = ({
         </Box>
 
         <Box sx={{ mb: 4 }}>
-          <Typography variant="h6" sx={{ color: 'text.secondary', mb: 2, fontWeight: 500 }}>
-            Top Artists
-          </Typography>
-          {topArtistsLoading ? (
-            <Box sx={{ display: 'flex', gap: 2, overflowX: 'auto', pb: 1 }}>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+            <Typography variant="h6" sx={{ color: 'text.secondary', fontWeight: 500 }}>
+              Recommended Artists
+            </Typography>
+            {recommendedArtists.length > 6 && (
+              <IconButton
+                onClick={() => {
+                  if (typeof onViewAllArtists === 'function') return onViewAllArtists();
+                  // fallback: scroll right on the container
+                  const el = artistsContainerRef.current;
+                  if (el) el.scrollBy({ left: el.clientWidth * 0.6, behavior: 'smooth' });
+                }}
+                size="small"
+                sx={{ color: 'primary.main' }}
+                aria-label="view all artists"
+              >
+                <ArrowForwardIcon />
+              </IconButton>
+            )}
+          </Box>
+          {recommendedArtistsLoading ? (
+            <Box sx={{ display: 'flex', gap: 2, overflowX: 'auto', pb: 1, scrollbarWidth: 'none', msOverflowStyle: 'none', '&::-webkit-scrollbar': { display: 'none' } }} ref={artistsContainerRef}>
               {[...Array(6)].map((_, idx) => (
-                <Box key={idx} sx={{ minWidth: 140, maxWidth: 140 }}>
-                  <Skeleton variant="circular" width={140} height={140} sx={{ mb: 1 }} />
-                  <Skeleton variant="text" width="80%" />
+                <Box key={idx} sx={{ minWidth: ARTIST_AVATAR_SIZE, maxWidth: ARTIST_AVATAR_SIZE }}>
+                  <Skeleton variant="circular" width={ARTIST_AVATAR_SIZE} height={ARTIST_AVATAR_SIZE} sx={{ mb: 1 }} />
+                  <Skeleton variant="text" width="70%" />
                 </Box>
               ))}
             </Box>
-          ) : topArtistsError ? (
+          ) : recommendedArtistsError ? (
             <Typography variant="body2" color="error">
-              {topArtistsError}
+              {recommendedArtistsError}
             </Typography>
-          ) : topArtists.length > 0 ? (
-            <Box
-              sx={{
-                display: 'flex',
-                gap: 2,
-                overflowX: 'auto',
-                pb: 1,
-                scrollbarWidth: 'none',
-                msOverflowStyle: 'none',
-                '&::-webkit-scrollbar': {
-                  display: 'none',
-                },
-              }}
-            >
-              {topArtists.map((artist) => (
+          ) : recommendedArtists.length > 0 ? (
+            <Box sx={{ display: 'flex', gap: 2, overflowX: 'auto', pb: 1, scrollbarWidth: 'none', msOverflowStyle: 'none', '&::-webkit-scrollbar': { display: 'none' } }} ref={artistsContainerRef}>
+              {recommendedArtists.map((artist) => (
                 <Box
                   key={artist.id ?? artist.name}
                   onClick={() => handleArtistCardClick(artist)}
-                  sx={{
-                    minWidth: 140,
-                    maxWidth: 140,
-                    cursor: 'pointer',
-                    transition: 'transform 0.2s',
-                    '&:hover': {
-                      transform: 'scale(1.05)',
-                    },
-                  }}
+                  sx={{ minWidth: ARTIST_AVATAR_SIZE, maxWidth: ARTIST_AVATAR_SIZE, cursor: 'pointer', transition: 'transform 0.2s', '&:hover': { transform: 'scale(1.05)' } }}
                 >
-                  <Avatar
-                    src={artist.image || undefined}
-                    variant="circular"
-                    imgProps={{ loading: 'lazy' }}
-                    sx={{
-                      width: 140,
-                      height: 140,
-                      mb: 1,
-                      boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)',
-                    }}
-                  >
-                    <MusicNoteIcon sx={{ fontSize: 60 }} />
+                  <Avatar src={artist.image || undefined} variant="circular" imgProps={{ loading: 'lazy' }} sx={{ width: ARTIST_AVATAR_SIZE, height: ARTIST_AVATAR_SIZE, mb: 1, boxShadow: '0 4px 12px rgba(0,0,0,0.3)' }}>
+                    <MusicNoteIcon sx={{ fontSize: Math.floor(ARTIST_AVATAR_SIZE * 0.55) }} />
                   </Avatar>
-                  <Typography
-                    variant="body2"
-                    sx={{
-                      fontWeight: 600,
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis',
-                      whiteSpace: 'nowrap',
-                      color: 'text.primary',
-                      textAlign: 'center',
-                    }}
-                  >
-                    {artist.name}
-                  </Typography>
+                  <Typography variant="body2" sx={{ fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: 'text.primary', textAlign: 'center' }}>{artist.name}</Typography>
                 </Box>
               ))}
             </Box>

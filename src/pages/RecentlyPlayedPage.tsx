@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Box, Typography, List, IconButton, Menu, MenuItem, ListItemIcon, Container } from '@mui/material';
+import SongItemSkeleton from '../components/SongItemSkeleton';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import MoreVertIcon from '@mui/icons-material/MoreVert';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
@@ -10,6 +11,7 @@ import ClearAllIcon from '@mui/icons-material/ClearAll';
 import { Song } from '../types/api';
 import SongItem from '../components/SongItem';
 import { FAVOURITE_SONGS_KEY, getMeta, persistFavourites, readFavourites, setMeta } from '../services/storage';
+import { decodeHtmlEntities } from '../utils/normalize';
 
 interface RecentlyPlayedPageProps {
   onBack: () => void;
@@ -21,6 +23,7 @@ interface RecentlyPlayedPageProps {
 
 const RecentlyPlayedPage: React.FC<RecentlyPlayedPageProps> = ({ onBack, onSongSelect, onAddToQueue, onPlayNext, onShowSnackbar }) => {
   const [recentSongs, setRecentSongs] = useState<Song[]>([]);
+  const [loading, setLoading] = useState(true);
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [selectedSong, setSelectedSong] = useState<Song | null>(null);
 
@@ -34,6 +37,7 @@ const RecentlyPlayedPage: React.FC<RecentlyPlayedPageProps> = ({ onBack, onSongS
       } catch (error) {
         console.warn('Unable to load recently played', error);
       }
+      setLoading(false);
     };
 
     loadRecentSongs();
@@ -107,12 +111,7 @@ const RecentlyPlayedPage: React.FC<RecentlyPlayedPageProps> = ({ onBack, onSongS
     setRecentSongs([]);
   };
 
-  const decodeHtmlEntities = (text: string): string => {
-    if (!text) return text;
-    const textarea = document.createElement('textarea');
-    textarea.innerHTML = text;
-    return textarea.value;
-  };
+  // use shared `decodeHtmlEntities` from utils
 
   const getImageUrl = (imageArray: any[]): string => {
     if (!Array.isArray(imageArray) || imageArray.length === 0) {
@@ -179,7 +178,13 @@ const RecentlyPlayedPage: React.FC<RecentlyPlayedPageProps> = ({ onBack, onSongS
       <Box sx={{ height: { xs: 56, sm: 64 }, width: '100%' }} />
 
       {/* Songs List */}
-      {recentSongs.length === 0 ? (
+      {loading ? (
+        <Box sx={{ px: 2 }}>
+          {Array.from({ length: 6 }).map((_, i) => (
+            <SongItemSkeleton key={i} />
+          ))}
+        </Box>
+      ) : recentSongs.length === 0 ? (
         <Box sx={{ textAlign: 'center', mt: 8, px: 2 }}>
           <Typography variant="body1" color="text.secondary">
             No recently played songs
