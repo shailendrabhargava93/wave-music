@@ -7,9 +7,7 @@ import {
   IconButton,
   CircularProgress,
 } from '@mui/material';
-import CloseIcon from '@mui/icons-material/Close';
-import MusicNoteIcon from '@mui/icons-material/MusicNote';
-import DragIndicatorIcon from '@mui/icons-material/DragIndicator';
+import { Close, MusicNote, DragIndicator } from '../icons';
 import { Song } from '../types/api';
 import SongItem from './SongItem';
 import { decodeHtmlEntities } from '../utils/normalize';
@@ -206,7 +204,7 @@ const UpNextDrawer: React.FC<UpNextDrawerProps> = ({
           sx={{ color: 'text.secondary' }}
           aria-label="close"
         >
-          <CloseIcon fontSize="small" />
+          <Close fontSize="small" />
         </IconButton>
       </Box>
 
@@ -266,7 +264,7 @@ const UpNextDrawer: React.FC<UpNextDrawerProps> = ({
                             </Box>
                           </Box>
                         )}
-                        <DragIndicatorIcon sx={{ color: 'text.secondary', fontSize: 20, pointerEvents: 'none' }} />
+                        <DragIndicator sx={{ color: 'text.secondary', fontSize: 20, pointerEvents: 'none' }} />
                       </Box>
                     }
                   />
@@ -287,7 +285,7 @@ const UpNextDrawer: React.FC<UpNextDrawerProps> = ({
               gap: 1,
             }}
           >
-            <MusicNoteIcon sx={{ fontSize: 60, color: 'text.disabled', opacity: 0.3 }} />
+            <MusicNote sx={{ fontSize: 60, color: 'text.disabled', opacity: 0.3 }} />
             <Typography variant="body2" color="text.secondary">
               No suggestions available
             </Typography>

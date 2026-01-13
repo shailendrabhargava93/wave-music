@@ -12,15 +12,9 @@ import {
   Menu,
   MenuItem,
   ListItemIcon,
+  Container,
 } from '@mui/material';
-import MusicNoteIcon from '@mui/icons-material/MusicNote';
-import FavoriteIcon from '@mui/icons-material/Favorite';
-import DeleteIcon from '@mui/icons-material/Delete';
-import AlbumIcon from '@mui/icons-material/Album';
-import PlaylistPlayIcon from '@mui/icons-material/PlaylistPlay';
-import PersonIcon from '@mui/icons-material/Person';
-import MoreVertIcon from '@mui/icons-material/MoreVert';
-import PlayArrowIcon from '@mui/icons-material/PlayArrow';
+import { MusicNote, Favorite, Delete, Album, PlaylistPlay, Person, MoreVertical, PlayArrow } from '../icons';
 import SongItem from '../components/SongItem';
 import SongItemSkeleton from '../components/SongItemSkeleton';
 import {
@@ -242,14 +236,13 @@ const FavouritesPage: React.FC<FavouritesPageProps> = ({ onSongSelect, onAlbumSe
         bgcolor: 'background.default',
         pb: 10,
         pt: 1,
-        px: 2
       }}
     >
-      <Box sx={{ px: 0 }}>
+      <Container maxWidth="sm" disableGutters sx={{ px: { xs: 2, sm: 2 } }}>
         <Box sx={{ mb: 1.5 }}>
           <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1.5 }}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-              <FavoriteIcon sx={{ color: 'primary.main', fontSize: 32 }} />
+              <Favorite sx={{ color: 'primary.main', fontSize: 32 }} />
               <Typography 
                 variant="h5" 
                 sx={{ 
@@ -266,11 +259,11 @@ const FavouritesPage: React.FC<FavouritesPageProps> = ({ onSongSelect, onAlbumSe
           </Box>
 
           {/* Tabs - compact horizontal scroll for chips only */}
-          <Box sx={{ mb: 2, overflowX: 'auto', px: 0, py: 0.25 }}>
-            <Box sx={{ display: 'flex', gap: 1, flexWrap: 'nowrap', alignItems: 'center' }}>
+          <Box sx={{ mb: 2, overflowX: 'auto', mx: -2, px: 2 }}>
+            <Box sx={{ display: 'flex', gap: 1.5, flexWrap: 'nowrap', alignItems: 'center' }}>
               <Chip
                 size="small"
-                icon={<MusicNoteIcon />}
+                icon={<MusicNote />}
                 label="Songs"
                 onClick={() => setActiveTab(0)}
                 variant={activeTab === 0 ? 'filled' : 'outlined'}
@@ -282,12 +275,12 @@ const FavouritesPage: React.FC<FavouritesPageProps> = ({ onSongSelect, onAlbumSe
                   borderColor: activeTab === 0 ? 'primary.main' : 'divider',
                   fontWeight: 500,
                   fontSize: '0.85rem',
-                  '& .MuiChip-icon': { fontSize: '1rem' },
+                  '& .MuiChip-icon': { fontSize: '1rem', marginLeft: '6px', marginRight: '-2px' },
                 }}
               />
               <Chip
                 size="small"
-                icon={<AlbumIcon />}
+                icon={<Album />}
                 label="Albums"
                 onClick={() => setActiveTab(1)}
                 variant={activeTab === 1 ? 'filled' : 'outlined'}
@@ -299,12 +292,12 @@ const FavouritesPage: React.FC<FavouritesPageProps> = ({ onSongSelect, onAlbumSe
                   borderColor: activeTab === 1 ? 'primary.main' : 'divider',
                   fontWeight: 500,
                   fontSize: '0.85rem',
-                  '& .MuiChip-icon': { fontSize: '1rem' },
+                  '& .MuiChip-icon': { fontSize: '1rem', marginLeft: '6px', marginRight: '-2px' },
                 }}
               />
               <Chip
                 size="small"
-                icon={<PlaylistPlayIcon />}
+                icon={<PlaylistPlay />}
                 label="Playlists"
                 onClick={() => setActiveTab(2)}
                 variant={activeTab === 2 ? 'filled' : 'outlined'}
@@ -316,12 +309,12 @@ const FavouritesPage: React.FC<FavouritesPageProps> = ({ onSongSelect, onAlbumSe
                   borderColor: activeTab === 2 ? 'primary.main' : 'divider',
                   fontWeight: 500,
                   fontSize: '0.85rem',
-                  '& .MuiChip-icon': { fontSize: '1rem' },
+                  '& .MuiChip-icon': { fontSize: '1rem', marginLeft: '6px', marginRight: '-2px' },
                 }}
               />
               <Chip
                 size="small"
-                icon={<PersonIcon />}
+                icon={<Person />}
                 label="Artists"
                 onClick={() => setActiveTab(3)}
                 variant={activeTab === 3 ? 'filled' : 'outlined'}
@@ -333,13 +326,16 @@ const FavouritesPage: React.FC<FavouritesPageProps> = ({ onSongSelect, onAlbumSe
                   borderColor: activeTab === 3 ? 'primary.main' : 'divider',
                   fontWeight: 500,
                   fontSize: '0.85rem',
-                  '& .MuiChip-icon': { fontSize: '1rem' },
+                  '& .MuiChip-icon': { fontSize: '1rem', marginLeft: '6px', marginRight: '-2px' },
                 }}
               />
             </Box>
           </Box>
         </Box>
+      </Container>
 
+      {/* Tab Content */}
+      <Box>
         {/* Songs Tab */}
         {activeTab === 0 && (
           <>
@@ -361,7 +357,7 @@ const FavouritesPage: React.FC<FavouritesPageProps> = ({ onSongSelect, onAlbumSe
                   px: { xs: 1, sm: 1.5 },
                 }}
               >
-                <MusicNoteIcon sx={{ fontSize: 80, color: 'text.disabled', opacity: 0.3 }} />
+                <MusicNote sx={{ fontSize: 80, color: 'text.disabled', opacity: 0.3 }} />
                 <Typography variant="h6" sx={{ color: 'text.secondary', textAlign: 'center' }}>
                   No favourite songs yet
                 </Typography>
@@ -384,7 +380,7 @@ const FavouritesPage: React.FC<FavouritesPageProps> = ({ onSongSelect, onAlbumSe
                         onClick={(e) => handleMenuOpen(e, song)}
                         sx={{ color: 'text.secondary' }}
                       >
-                        <MoreVertIcon />
+                        <MoreVertical />
                       </IconButton>
                     }
                   />
@@ -409,7 +405,7 @@ const FavouritesPage: React.FC<FavouritesPageProps> = ({ onSongSelect, onAlbumSe
                   px: { xs: 1, sm: 1.5 },
                 }}
               >
-                <AlbumIcon sx={{ fontSize: 80, color: 'text.disabled', opacity: 0.3 }} />
+                <Album sx={{ fontSize: 80, color: 'text.disabled', opacity: 0.3 }} />
                 <Typography variant="h6" sx={{ color: 'text.secondary', textAlign: 'center' }}>
                   No favourite albums yet
                 </Typography>
@@ -446,7 +442,7 @@ const FavouritesPage: React.FC<FavouritesPageProps> = ({ onSongSelect, onAlbumSe
                         onClick={(e) => handleMenuOpen(e, album)}
                         sx={{ color: 'text.secondary' }}
                       >
-                        <MoreVertIcon />
+                        <MoreVertical />
                       </IconButton>
                     }
                   >
@@ -469,7 +465,7 @@ const FavouritesPage: React.FC<FavouritesPageProps> = ({ onSongSelect, onAlbumSe
                           }
                         }}
                       >
-                        {!album.image && <AlbumIcon />}
+                        {!album.image && <Album />}
                       </Avatar>
                     </ListItemAvatar>
                     <ListItemText
@@ -534,7 +530,7 @@ const FavouritesPage: React.FC<FavouritesPageProps> = ({ onSongSelect, onAlbumSe
                   px: 2,
                 }}
               >
-                <PlaylistPlayIcon sx={{ fontSize: 80, color: 'text.disabled', opacity: 0.3 }} />
+                <PlaylistPlay sx={{ fontSize: 80, color: 'text.disabled', opacity: 0.3 }} />
                 <Typography variant="h6" sx={{ color: 'text.secondary', textAlign: 'center' }}>
                   No favourite playlists yet
                 </Typography>
@@ -571,7 +567,7 @@ const FavouritesPage: React.FC<FavouritesPageProps> = ({ onSongSelect, onAlbumSe
                         onClick={(e) => handleMenuOpen(e, playlist)}
                         sx={{ color: 'text.secondary' }}
                       >
-                        <MoreVertIcon />
+                        <MoreVertical />
                       </IconButton>
                     }
                   >
@@ -594,7 +590,7 @@ const FavouritesPage: React.FC<FavouritesPageProps> = ({ onSongSelect, onAlbumSe
                           }
                         }}
                       >
-                        {!playlist.image && <PlaylistPlayIcon />}
+                        {!playlist.image && <PlaylistPlay />}
                       </Avatar>
                     </ListItemAvatar>
                     <ListItemText
@@ -659,7 +655,7 @@ const FavouritesPage: React.FC<FavouritesPageProps> = ({ onSongSelect, onAlbumSe
                   px: 2,
                 }}
               >
-                <PersonIcon sx={{ fontSize: 80, color: 'text.disabled', opacity: 0.3 }} />
+                <Person sx={{ fontSize: 80, color: 'text.disabled', opacity: 0.3 }} />
                 <Typography variant="h6" sx={{ color: 'text.secondary', textAlign: 'center' }}>
                   No favourite artists yet
                 </Typography>
@@ -696,7 +692,7 @@ const FavouritesPage: React.FC<FavouritesPageProps> = ({ onSongSelect, onAlbumSe
                         onClick={(e) => handleMenuOpen(e, artist)}
                         sx={{ color: 'text.secondary' }}
                       >
-                        <MoreVertIcon />
+                        <MoreVertical />
                       </IconButton>
                     }
                   >
@@ -718,7 +714,7 @@ const FavouritesPage: React.FC<FavouritesPageProps> = ({ onSongSelect, onAlbumSe
                           }
                         }}
                       >
-                        {!artist.image && <PersonIcon />}
+                        {!artist.image && <Person />}
                       </Avatar>
                     </ListItemAvatar>
                     <ListItemText
@@ -785,7 +781,7 @@ const FavouritesPage: React.FC<FavouritesPageProps> = ({ onSongSelect, onAlbumSe
           {activeTab === 0 && (
             <MenuItem onClick={() => { onSongSelect(selectedItem?.id); handleMenuClose(); }}>
               <ListItemIcon>
-                <PlayArrowIcon fontSize="small" />
+                <PlayArrow fontSize="small" />
               </ListItemIcon>
               <Typography variant="body2">Play Now</Typography>
             </MenuItem>
@@ -793,7 +789,7 @@ const FavouritesPage: React.FC<FavouritesPageProps> = ({ onSongSelect, onAlbumSe
           {activeTab === 1 && onAlbumSelect && (
             <MenuItem onClick={() => { onAlbumSelect(selectedItem?.id, selectedItem?.name, selectedItem?.image); handleMenuClose(); }}>
               <ListItemIcon>
-                <PlayArrowIcon fontSize="small" />
+                <PlayArrow fontSize="small" />
               </ListItemIcon>
               <Typography variant="body2">Open Album</Typography>
             </MenuItem>
@@ -801,7 +797,7 @@ const FavouritesPage: React.FC<FavouritesPageProps> = ({ onSongSelect, onAlbumSe
           {activeTab === 2 && onPlaylistSelect && (
             <MenuItem onClick={() => { onPlaylistSelect(selectedItem?.id, selectedItem?.name, selectedItem?.image); handleMenuClose(); }}>
               <ListItemIcon>
-                <PlayArrowIcon fontSize="small" />
+                <PlayArrow fontSize="small" />
               </ListItemIcon>
               <Typography variant="body2">Open Playlist</Typography>
             </MenuItem>
@@ -809,14 +805,14 @@ const FavouritesPage: React.FC<FavouritesPageProps> = ({ onSongSelect, onAlbumSe
           {activeTab === 3 && onArtistSelect && (
             <MenuItem onClick={() => { onArtistSelect(selectedItem?.id, selectedItem?.name, selectedItem?.image); handleMenuClose(); }}>
               <ListItemIcon>
-                <PlayArrowIcon fontSize="small" />
+                <PlayArrow fontSize="small" />
               </ListItemIcon>
               <Typography variant="body2">Open Artist</Typography>
             </MenuItem>
           )}
           <MenuItem onClick={handleRemove} sx={{ color: 'error.main' }}>
             <ListItemIcon>
-              <DeleteIcon fontSize="small" sx={{ color: 'error.main' }} />
+              <Delete fontSize="small" sx={{ color: 'error.main' }} />
             </ListItemIcon>
             <Typography variant="body2">Remove from Library</Typography>
           </MenuItem>

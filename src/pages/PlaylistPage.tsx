@@ -11,18 +11,11 @@ import {
   Container,
   Skeleton,
 } from '@mui/material';
-import ArrowBackIcon from '@mui/icons-material/ArrowBack';
-import MusicNoteIcon from '@mui/icons-material/MusicNote';
+import { ArrowBack, MusicNote, PlayArrow, FavoriteBorder, Favorite, QueueMusic, PlaylistAdd, Shuffle, MoreVertical } from '../icons';
 import SongItem from '../components/SongItem';
 import SongItemSkeleton from '../components/SongItemSkeleton';
-import PlayArrowIcon from '@mui/icons-material/PlayArrow';
-import FavoriteBorderIcon from '@mui/icons-material/FavoriteBorder';
-import FavoriteIcon from '@mui/icons-material/Favorite';
-import MoreVertIcon from '@mui/icons-material/MoreVert';
-import QueueMusicIcon from '@mui/icons-material/QueueMusic';
-import PlaylistAddIcon from '@mui/icons-material/PlaylistAdd';
-import ShuffleIcon from '@mui/icons-material/Shuffle';
 import { saavnApi } from '../services/saavnApi';
+  
 import {
   FAVOURITE_ALBUMS_KEY,
   FAVOURITE_PLAYLISTS_KEY,
@@ -52,6 +45,36 @@ const extractSongsFromArtistResponse = (response: any): any[] => {
     return response.data;
   }
   return [];
+};
+
+const getArtistNames = (song: any): string => {
+  if (!song) return 'Unknown Artist';
+  if (song.artists) {
+    if (typeof song.artists === 'string') return song.artists;
+    if (Array.isArray(song.artists)) {
+      return song.artists.map((a: any) => a.name || a).join(', ');
+    }
+    if (song.artists.primary && Array.isArray(song.artists.primary)) {
+      return song.artists.primary.map((a: any) => a.name || a).join(', ');
+    }
+  }
+  if (song.artist) return song.artist;
+  if (song.primaryArtists) return song.primaryArtists;
+  return 'Unknown Artist';
+};
+
+const getHighQualityImage = (imageUrl: string | any[] | any): string => {
+  if (!imageUrl) return '';
+  if (typeof imageUrl === 'string') return imageUrl;
+  if (Array.isArray(imageUrl)) {
+    const highQuality = imageUrl.find((img: any) => img.quality === '500x500' || img.quality === 'high');
+    if (highQuality) return highQuality.url || highQuality.link || '';
+    return imageUrl[imageUrl.length - 1]?.url || imageUrl[imageUrl.length - 1]?.link || '';
+  }
+  if (typeof imageUrl === 'object') {
+    return imageUrl.url || imageUrl.link || '';
+  }
+  return '';
 };
 
 interface PlaylistPageProps {
@@ -215,30 +238,30 @@ const PlaylistPage: React.FC<PlaylistPageProps> = ({
   useEffect(() => {
     // Scroll to top when component mounts
     window.scrollTo(0, 0);
-    
+
     // Create a unique key for this fetch request
     const fetchKey = `${playlistId}-${type}`;
-    
+
     // Skip if we already have an active fetch for this exact data
     if (lastFetchKeyRef.current === fetchKey && fetchAbortControllerRef.current) {
       return;
     }
-    
+
     // Cancel any previous request
     if (fetchAbortControllerRef.current) {
       fetchAbortControllerRef.current.abort();
     }
-    
+
     const abortController = new AbortController();
     fetchAbortControllerRef.current = abortController;
     lastFetchKeyRef.current = fetchKey;
     let isMounted = true;
-    
+
     const fetchPlaylist = async () => {
       try {
         setLoading(true);
         setError(false);
-        
+
         let response: any;
         if (type === 'album') {
           response = await saavnApi.getAlbumById(playlistId);
@@ -277,30 +300,8 @@ const PlaylistPage: React.FC<PlaylistPageProps> = ({
       fetchAbortControllerRef.current = null;
     };
   }, [playlistId, type]);
-
-  const getHighQualityImage = (images: Array<{ quality: string; url: string }>) => {
-    if (!images || images.length === 0) return '';
-    
-    const qualities = ['500x500', '150x150', '50x50'];
-    for (const quality of qualities) {
-      const img = images.find(img => img.quality === quality);
-      if (img?.url) return img.url;
-    }
-    
-    return images[images.length - 1]?.url || '';
-  };
-
-  const getArtistNames = (song: any): string => {
-    if (song.artists?.primary && Array.isArray(song.artists.primary)) {
-      return song.artists.primary.map((artist: any) => artist.name).join(', ');
-    }
-    return 'Unknown Artist';
-  };
-
-  
-
   return (
-    <Box sx={{ pb: 14, minHeight: '100vh', pt: 0, px: { xs: 2, sm: 3 } }}>
+    <Box sx={{ pb: 14, px: 2, pt: 2 }}>
       {/* Fixed header with back button and playlist name (aligned to app container) */}
       <Box
         sx={(theme) => ({
@@ -326,7 +327,7 @@ const PlaylistPage: React.FC<PlaylistPageProps> = ({
               },
             }}
           >
-            <ArrowBackIcon />
+            <ArrowBack />
           </IconButton>
           <Typography variant="h6" sx={{ color: 'text.primary', fontWeight: 600, flex: 1, pl: 0.5 }} noWrap>
             {decodeHtmlEntities(playlistName)}
@@ -363,7 +364,7 @@ const PlaylistPage: React.FC<PlaylistPageProps> = ({
               boxShadow: '0 4px 12px rgba(0, 0, 0, 0.2)',
             }}
           >
-            <PlayArrowIcon sx={{ fontSize: 80 }} />
+            <PlayArrow sx={{ fontSize: 80 }} />
           </Avatar>
         )}
         {loading ? (
@@ -397,7 +398,7 @@ const PlaylistPage: React.FC<PlaylistPageProps> = ({
                 aria-label="shuffle"
                 title="Shuffle Play"
               >
-                <ShuffleIcon fontSize="small" />
+                <Shuffle fontSize="small" />
               </IconButton>
               <IconButton
                 onClick={() => {
@@ -415,7 +416,7 @@ const PlaylistPage: React.FC<PlaylistPageProps> = ({
                   },
                 }}
               >
-                <PlayArrowIcon sx={{ fontSize: 28 }} />
+                <PlayArrow sx={{ fontSize: 28 }} />
               </IconButton>
             </>
           )}
@@ -432,7 +433,7 @@ const PlaylistPage: React.FC<PlaylistPageProps> = ({
               },
             })}
           >
-            {isFavourite ? <FavoriteIcon fontSize="small" sx={{ color: 'error.main' }} /> : <FavoriteBorderIcon fontSize="small" />}
+            {isFavourite ? <Favorite fontSize="small" sx={{ color: 'error.main' }} /> : <FavoriteBorder fontSize="small" />}
           </IconButton>
         </Box>
       </Box>
@@ -486,7 +487,7 @@ const PlaylistPage: React.FC<PlaylistPageProps> = ({
                     onClick={(e) => handleMenuOpen(e, song)}
                     sx={{ color: 'text.secondary' }}
                   >
-                    <MoreVertIcon />
+                    <MoreVertical />
                   </IconButton>
                 }
               />
@@ -509,25 +510,25 @@ const PlaylistPage: React.FC<PlaylistPageProps> = ({
           >
             <MenuItem onClick={handlePlayNow}>
               <ListItemIcon>
-                <PlayArrowIcon fontSize="small" />
+                <PlayArrow fontSize="small" />
               </ListItemIcon>
               <Typography variant="body2">Play Now</Typography>
             </MenuItem>
             <MenuItem onClick={handlePlayNext}>
               <ListItemIcon>
-                <QueueMusicIcon fontSize="small" />
+                <QueueMusic fontSize="small" />
               </ListItemIcon>
               <Typography variant="body2">Play Next</Typography>
             </MenuItem>
             <MenuItem onClick={handleAddToQueue}>
               <ListItemIcon>
-                <PlaylistAddIcon fontSize="small" />
+                <PlaylistAdd fontSize="small" />
               </ListItemIcon>
               <Typography variant="body2">Add to Queue</Typography>
             </MenuItem>
             <MenuItem onClick={handleAddToFavourites}>
               <ListItemIcon>
-                <FavoriteIcon fontSize="small" />
+                <Favorite fontSize="small" />
               </ListItemIcon>
               <Typography variant="body2">Add to Favourites</Typography>
             </MenuItem>
@@ -547,7 +548,7 @@ const PlaylistPage: React.FC<PlaylistPageProps> = ({
             gap: 2,
           }}
         >
-          <MusicNoteIcon sx={{ fontSize: 64, color: 'text.disabled' }} />
+          <MusicNote sx={{ fontSize: 64, color: 'text.disabled' }} />
           <Typography variant="h6" sx={{ color: 'text.secondary' }}>
             No songs in this playlist
           </Typography>

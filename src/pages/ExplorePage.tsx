@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Box, Typography, Chip, IconButton, Skeleton, Container } from '@mui/material';
-import ArrowBackIcon from '@mui/icons-material/ArrowBack';
+import { ArrowBack } from '../icons';
 import { saavnApi } from '../services/saavnApi';
 import { decodeHtmlEntities } from '../utils/normalize';
 import SongItemSkeleton from '../components/SongItemSkeleton';
@@ -159,7 +159,7 @@ const ExplorePage: React.FC<ExplorePageProps> = ({ onPlaylistSelect }) => {
                   },
                 }}
               >
-                <ArrowBackIcon />
+                <ArrowBack />
               </IconButton>
 
               <Typography variant="h6" sx={{ color: 'text.primary', fontWeight: 600, fontSize: '1.1rem', pl: 0.5 }} noWrap>

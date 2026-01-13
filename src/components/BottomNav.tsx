@@ -1,10 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { BottomNavigation, BottomNavigationAction, Paper, Box, Typography } from '@mui/material';
 import { subscribeNetworkStatus, getLastFetchFailed } from '../services/networkStatus';
-import HomeIcon from '@mui/icons-material/Home';
-import SearchIcon from '@mui/icons-material/Search';
-import LibraryMusicIcon from '@mui/icons-material/LibraryMusic';
-import ExploreIcon from '@mui/icons-material/Explore';
+import { Home, Search, LibraryMusic, Explore } from '../icons';
 
 interface BottomNavProps {
   activeTab: string;
@@ -45,10 +42,10 @@ const BottomNav: React.FC<BottomNavProps> = ({ activeTab, onTabChange, showLabel
           },
         }}
       >
-        <BottomNavigationAction {...(showLabels && { label: 'Home' })} icon={<HomeIcon />} />
-        <BottomNavigationAction {...(showLabels && { label: 'Explore' })} icon={<ExploreIcon />} />
-        <BottomNavigationAction {...(showLabels && { label: 'Search' })} icon={<SearchIcon />} />
-        <BottomNavigationAction {...(showLabels && { label: 'Library' })} icon={<LibraryMusicIcon />} />
+        <BottomNavigationAction {...(showLabels && { label: 'Home' })} icon={<Home />} />
+        <BottomNavigationAction {...(showLabels && { label: 'Explore' })} icon={<Explore />} />
+        <BottomNavigationAction {...(showLabels && { label: 'Search' })} icon={<Search />} />
+        <BottomNavigationAction {...(showLabels && { label: 'Library' })} icon={<LibraryMusic />} />
       </BottomNavigation>
 
       {/* Offline / fetch failure banner below nav buttons, always visible like the nav */}

@@ -10,21 +10,13 @@ import {
   MenuItem,
   ListItemIcon,
 } from '@mui/material';
-import MoreVertIcon from '@mui/icons-material/MoreVert';
-import PlayArrowIcon from '@mui/icons-material/PlayArrow';
-import FavoriteBorderIcon from '@mui/icons-material/FavoriteBorder';
-import FavoriteIcon from '@mui/icons-material/Favorite';
-import PlaylistAddIcon from '@mui/icons-material/PlaylistAdd';
-import QueueMusicIcon from '@mui/icons-material/QueueMusic';
+import { MoreVertical, PlayArrow, FavoriteBorder, Favorite, PlaylistAdd, QueueMusic, Album, PlaylistPlay, ArrowForward, MusicNote } from '../icons';
 import Header from '../components/Header';
 import { Song } from '../types/api';
 import { SoundChartsItem } from '../services/soundChartsApi';
 import { saavnApi } from '../services/saavnApi';
 import { decodeHtmlEntities } from '../utils/normalize';
-import AlbumIcon from '@mui/icons-material/Album';
-import PlaylistPlayIcon from '@mui/icons-material/PlaylistPlay';
-import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
-import MusicNoteIcon from '@mui/icons-material/MusicNote';
+// consolidated icons import above
 import { FAVOURITE_SONGS_KEY, persistFavourites, readFavourites, getMeta, setMeta } from '../services/storage';
 
 interface HomePageProps {
@@ -196,6 +188,7 @@ const HomePage: React.FC<HomePageProps> = ({
             name,
             image,
             artists: { primary: [{ name: primaryArtist }] },
+            type: item.type, // Preserve the type from API (song/album)
             // keep original for any other fallbacks
             _raw: item,
           };
@@ -465,7 +458,24 @@ const HomePage: React.FC<HomePageProps> = ({
               {latestAlbums.map((album) => (
                 <Box
                   key={album.id}
-                  onClick={() => onAlbumSelect(album.id, album.name, getHighQualityImage(album.image))}
+                  onClick={async () => {
+                    // Check if this is actually a song, not an album
+                    if (album.type === 'song') {
+                      try {
+                        // Fetch the song details
+                        const songResponse = await saavnApi.getSongById(album.id);
+                        if (songResponse?.success && songResponse?.data && Array.isArray(songResponse.data) && songResponse.data.length > 0) {
+                          const songData = songResponse.data[0];
+                          onSongSelect(songData, [songData]);
+                        }
+                      } catch (error) {
+                        console.error('Error fetching song:', error);
+                      }
+                    } else {
+                      // It's an actual album
+                      onAlbumSelect(album.id, album.name, getHighQualityImage(album.image));
+                    }
+                  }}
                   sx={{
                     minWidth: 140,
                     maxWidth: 140,
@@ -486,7 +496,7 @@ const HomePage: React.FC<HomePageProps> = ({
                       boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)',
                     }}
                   >
-                    <AlbumIcon sx={{ fontSize: 60 }} />
+                    <Album sx={{ fontSize: 60 }} />
                   </Avatar>
                   <Typography
                     variant="body2"
@@ -503,7 +513,7 @@ const HomePage: React.FC<HomePageProps> = ({
                       },
                     }}
                   >
-                    {album.name}
+                    {decodeHtmlEntities(album.name)}
                   </Typography>
                   <Typography
                     variant="caption"
@@ -520,7 +530,7 @@ const HomePage: React.FC<HomePageProps> = ({
                       },
                     }}
                   >
-                    {album.artists?.primary?.[0]?.name || 'Various Artists'}
+                    {decodeHtmlEntities(album.artists?.primary?.[0]?.name || 'Various Artists')}
                   </Typography>
                 </Box>
               ))}
@@ -593,7 +603,7 @@ const HomePage: React.FC<HomePageProps> = ({
                       boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)',
                     }}
                   >
-                    <MusicNoteIcon sx={{ fontSize: 60 }} />
+                    <MusicNote sx={{ fontSize: 60 }} />
                   </Avatar>
                   <Typography
                     variant="body2"
@@ -688,7 +698,7 @@ const HomePage: React.FC<HomePageProps> = ({
                       boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)',
                     }}
                   >
-                    <PlaylistPlayIcon sx={{ fontSize: 60 }} />
+                    <PlaylistPlay sx={{ fontSize: 60 }} />
                   </Avatar>
                   <Typography
                       variant="body2"
@@ -730,7 +740,7 @@ const HomePage: React.FC<HomePageProps> = ({
                 sx={{ color: 'primary.main' }}
                 aria-label="view all artists"
               >
-                <ArrowForwardIcon />
+                <ArrowForward />
               </IconButton>
             )}
           </Box>
@@ -756,7 +766,7 @@ const HomePage: React.FC<HomePageProps> = ({
                   sx={{ minWidth: ARTIST_AVATAR_SIZE, maxWidth: ARTIST_AVATAR_SIZE, cursor: 'pointer', transition: 'transform 0.2s', '&:hover': { transform: 'scale(1.05)' } }}
                 >
                   <Avatar src={artist.image || undefined} variant="circular" imgProps={{ loading: 'lazy' }} sx={{ width: ARTIST_AVATAR_SIZE, height: ARTIST_AVATAR_SIZE, mb: 1, boxShadow: '0 4px 12px rgba(0,0,0,0.3)' }}>
-                    <MusicNoteIcon sx={{ fontSize: Math.floor(ARTIST_AVATAR_SIZE * 0.55) }} />
+                    <MusicNote sx={{ fontSize: Math.floor(ARTIST_AVATAR_SIZE * 0.55) }} />
                   </Avatar>
                   <Typography variant="body2" sx={{ fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: 'text.primary', textAlign: 'center' }}>{artist.name}</Typography>
                 </Box>
@@ -786,7 +796,7 @@ const HomePage: React.FC<HomePageProps> = ({
               }}
               aria-label="view all trending songs"
             >
-              <ArrowForwardIcon />
+              <ArrowForward />
             </IconButton>
           )}
         </Box>
@@ -909,7 +919,7 @@ const HomePage: React.FC<HomePageProps> = ({
                     size="small"
                     sx={{ color: 'text.secondary' }}
                   >
-                    <MoreVertIcon fontSize="small" />
+                    <MoreVertical fontSize="small" />
                   </IconButton>
                 )}
 
@@ -953,14 +963,14 @@ const HomePage: React.FC<HomePageProps> = ({
       >
         <MenuItem onClick={() => selectedSong?.saavnData && onSongSelect(selectedSong.saavnData)}>
           <ListItemIcon>
-            <PlayArrowIcon fontSize="small" />
+            <PlayArrow fontSize="small" />
           </ListItemIcon>
           Play
         </MenuItem>
         {onPlayNext && (
           <MenuItem onClick={handlePlayNext}>
             <ListItemIcon>
-              <PlaylistAddIcon fontSize="small" />
+              <PlaylistAdd fontSize="small" />
             </ListItemIcon>
             Play Next
           </MenuItem>
@@ -968,7 +978,7 @@ const HomePage: React.FC<HomePageProps> = ({
         {onAddToQueue && (
           <MenuItem onClick={handleAddToQueue}>
             <ListItemIcon>
-              <QueueMusicIcon fontSize="small" />
+              <QueueMusic fontSize="small" />
             </ListItemIcon>
             Add to Queue
           </MenuItem>
@@ -976,9 +986,9 @@ const HomePage: React.FC<HomePageProps> = ({
         <MenuItem onClick={handleAddToFavourites}>
           <ListItemIcon>
             {selectedSong?.saavnData && favouriteSongs.includes(selectedSong.saavnData.id) ? (
-              <FavoriteIcon fontSize="small" />
+              <Favorite fontSize="small" />
             ) : (
-              <FavoriteBorderIcon fontSize="small" />
+              <FavoriteBorder fontSize="small" />
             )}
           </ListItemIcon>
           {selectedSong?.saavnData && favouriteSongs.includes(selectedSong.saavnData.id) ? 'Remove from Favorites' : 'Add to Favorites'}

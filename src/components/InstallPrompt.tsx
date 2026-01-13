@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Box, Button, IconButton, Snackbar } from '@mui/material';
-import CloseIcon from '@mui/icons-material/Close';
-import GetAppIcon from '@mui/icons-material/GetApp';
+import { X, Download } from '../icons';
 
 interface BeforeInstallPromptEvent extends Event {
   prompt(): Promise<void>;
@@ -74,7 +73,7 @@ const InstallPrompt = () => {
           borderColor: 'divider',
         }}
       >
-        <GetAppIcon sx={{ color: 'primary.main' }} />
+        <Download sx={{ fontSize: 20, color: 'primary.main' }} />
         <Box sx={{ flex: 1 }}>
           <Box sx={{ fontWeight: 600, mb: 0.5 }}>Install Wave Music</Box>
           <Box sx={{ fontSize: '0.875rem', color: 'text.secondary' }}>
@@ -94,7 +93,7 @@ const InstallPrompt = () => {
           Install
         </Button>
         <IconButton size="small" onClick={handleClose}>
-          <CloseIcon fontSize="small" />
+          <X sx={{ fontSize: 16 }} />
         </IconButton>
       </Box>
     </Snackbar>

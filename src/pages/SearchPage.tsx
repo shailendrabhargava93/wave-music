@@ -16,22 +16,12 @@ import {
   MenuItem,
   ListItemIcon,
   Skeleton,
+  Container,
 } from '@mui/material';
-import SearchIcon from '@mui/icons-material/Search';
-import MusicNoteIcon from '@mui/icons-material/MusicNote';
-import PlaylistPlayIcon from '@mui/icons-material/PlaylistPlay';
-import AlbumIcon from '@mui/icons-material/Album';
-import PersonIcon from '@mui/icons-material/Person';
-import ClearIcon from '@mui/icons-material/Clear';
-import HistoryIcon from '@mui/icons-material/History';
-import ClearAllIcon from '@mui/icons-material/ClearAll';
-import MoreVertIcon from '@mui/icons-material/MoreVert';
-import PlayArrowIcon from '@mui/icons-material/PlayArrow';
+import { Search, MusicNote, PlaylistPlay, Album, Person, Clear, History, ClearAll, PlayArrow, QueueMusic, PlaylistAdd, Favorite, MoreVertical } from '../icons';
 import SongItem from '../components/SongItem';
 import SongItemSkeleton from '../components/SongItemSkeleton';
-import QueueMusicIcon from '@mui/icons-material/QueueMusic';
-import PlaylistAddIcon from '@mui/icons-material/PlaylistAdd';
-import FavoriteIcon from '@mui/icons-material/Favorite';
+// icons now imported from ../icons
 import { saavnApi } from '../services/saavnApi';
 import { Song } from '../types/api';
 import { FAVOURITE_SONGS_KEY, persistFavourites, readFavourites } from '../services/storage';
@@ -345,7 +335,7 @@ const SearchPage: React.FC<SearchPageProps> = ({ onSongSelect, onPlaylistSelect,
         InputProps={{
           startAdornment: (
             <InputAdornment position="start">
-              <SearchIcon sx={{ color: 'text.secondary' }} />
+              <Search sx={{ color: 'text.secondary' }} />
             </InputAdornment>
           ),
           endAdornment: (
@@ -353,7 +343,7 @@ const SearchPage: React.FC<SearchPageProps> = ({ onSongSelect, onPlaylistSelect,
               {loading ? (
                 <CircularProgress size={20} sx={{ color: 'primary.main' }} />
               ) : searchQuery ? (
-                <ClearIcon
+                <Clear
                   sx={{
                     color: 'text.secondary',
                     cursor: 'pointer',
@@ -399,7 +389,7 @@ const SearchPage: React.FC<SearchPageProps> = ({ onSongSelect, onPlaylistSelect,
         <Box sx={{ mb: 4 }}>
           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-              <HistoryIcon sx={{ color: 'text.secondary', fontSize: 20 }} />
+              <History sx={{ color: 'text.secondary', fontSize: 20 }} />
               <Typography variant="subtitle2" sx={{ color: 'text.secondary', fontWeight: 600 }}>
                 Recent Searches
               </Typography>
@@ -410,7 +400,7 @@ const SearchPage: React.FC<SearchPageProps> = ({ onSongSelect, onPlaylistSelect,
               sx={{ color: 'text.secondary' }}
               title="Clear all recent searches"
             >
-              <ClearAllIcon />
+              <ClearAll />
             </IconButton>
           </Box>
 
@@ -457,13 +447,13 @@ const SearchPage: React.FC<SearchPageProps> = ({ onSongSelect, onPlaylistSelect,
 
       {/* Tabs for Search Results */}
       {!loading && hasSearched && (songs.length > 0 || playlists.length > 0 || albums.length > 0 || artists.length > 0) && (
-        <Box>
+        <Container maxWidth="sm" disableGutters sx={{ px: { xs: 2, sm: 2 } }}>
           {/* Compact horizontally scrollable tabs chips */}
-          <Box sx={{ mb: 2, overflowX: 'auto', px: 0, py: 0.25 }}>
-            <Box sx={{ display: 'flex', gap: 1, flexWrap: 'nowrap', alignItems: 'center' }}>
+          <Box sx={{ mb: 2, overflowX: 'auto', mx: -2, px: 2 }}>
+            <Box sx={{ display: 'flex', gap: 1.5, flexWrap: 'nowrap', alignItems: 'center' }}>
               <Chip
                 size="small"
-                icon={<MusicNoteIcon />}
+                icon={<MusicNote />}
                 label="Songs"
                 onClick={() => setActiveTab(0)}
                 variant={activeTab === 0 ? 'filled' : 'outlined'}
@@ -475,12 +465,12 @@ const SearchPage: React.FC<SearchPageProps> = ({ onSongSelect, onPlaylistSelect,
                   borderColor: activeTab === 0 ? 'primary.main' : 'divider',
                   fontWeight: 500,
                   fontSize: '0.85rem',
-                  '& .MuiChip-icon': { fontSize: '1rem' },
+                  '& .MuiChip-icon': { fontSize: '1rem', marginLeft: '6px', marginRight: '-2px' },
                 }}
               />
               <Chip
                 size="small"
-                icon={<AlbumIcon />}
+                icon={<Album />}
                 label="Albums"
                 onClick={() => setActiveTab(1)}
                 variant={activeTab === 1 ? 'filled' : 'outlined'}
@@ -492,12 +482,12 @@ const SearchPage: React.FC<SearchPageProps> = ({ onSongSelect, onPlaylistSelect,
                   borderColor: activeTab === 1 ? 'primary.main' : 'divider',
                   fontWeight: 500,
                   fontSize: '0.85rem',
-                  '& .MuiChip-icon': { fontSize: '1rem' },
+                  '& .MuiChip-icon': { fontSize: '1rem', marginLeft: '6px', marginRight: '-2px' },
                 }}
               />
               <Chip
                 size="small"
-                icon={<PlaylistPlayIcon />}
+                icon={<PlaylistPlay />}
                 label="Playlists"
                 onClick={() => setActiveTab(2)}
                 variant={activeTab === 2 ? 'filled' : 'outlined'}
@@ -509,12 +499,12 @@ const SearchPage: React.FC<SearchPageProps> = ({ onSongSelect, onPlaylistSelect,
                   borderColor: activeTab === 2 ? 'primary.main' : 'divider',
                   fontWeight: 500,
                   fontSize: '0.85rem',
-                  '& .MuiChip-icon': { fontSize: '1rem' },
+                  '& .MuiChip-icon': { fontSize: '1rem', marginLeft: '6px', marginRight: '-2px' },
                 }}
               />
               <Chip
                 size="small"
-                icon={<PersonIcon />}
+                icon={<Person />}
                 label="Artists"
                 onClick={() => setActiveTab(3)}
                 variant={activeTab === 3 ? 'filled' : 'outlined'}
@@ -526,12 +516,17 @@ const SearchPage: React.FC<SearchPageProps> = ({ onSongSelect, onPlaylistSelect,
                   borderColor: activeTab === 3 ? 'primary.main' : 'divider',
                   fontWeight: 500,
                   fontSize: '0.85rem',
-                  '& .MuiChip-icon': { fontSize: '1rem' },
+                  '& .MuiChip-icon': { fontSize: '1rem', marginLeft: '6px', marginRight: '-2px' },
                 }}
               />
             </Box>
           </Box>
+        </Container>
+      )}
 
+      {/* Tab Content */}
+      {!loading && hasSearched && (songs.length > 0 || playlists.length > 0 || albums.length > 0 || artists.length > 0) && (
+        <Box>
           {/* Songs Tab */}
           {activeTab === 0 && (
             <Box>
@@ -552,7 +547,7 @@ const SearchPage: React.FC<SearchPageProps> = ({ onSongSelect, onPlaylistSelect,
                     gap: 2,
                   }}
                 >
-                  <MusicNoteIcon sx={{ fontSize: 64, color: 'text.disabled', opacity: 0.3 }} />
+                  <MusicNote sx={{ fontSize: 64, color: 'text.disabled', opacity: 0.3 }} />
                   <Typography variant="body1" sx={{ color: 'text.secondary' }}>
                     No songs found
                   </Typography>
@@ -572,7 +567,7 @@ const SearchPage: React.FC<SearchPageProps> = ({ onSongSelect, onPlaylistSelect,
                           onClick={(e) => handleMenuOpen(e, song)}
                           sx={{ color: 'text.secondary' }}
                         >
-                          <MoreVertIcon />
+                          <MoreVertical />
                         </IconButton>
                       }
                     />
@@ -596,7 +591,7 @@ const SearchPage: React.FC<SearchPageProps> = ({ onSongSelect, onPlaylistSelect,
                     gap: 2,
                   }}
                 >
-                  <AlbumIcon sx={{ fontSize: 64, color: 'text.disabled', opacity: 0.3 }} />
+                  <Album sx={{ fontSize: 64, color: 'text.disabled', opacity: 0.3 }} />
                   <Typography variant="body1" sx={{ color: 'text.secondary' }}>
                     No albums found
                   </Typography>
@@ -624,7 +619,7 @@ const SearchPage: React.FC<SearchPageProps> = ({ onSongSelect, onPlaylistSelect,
                           variant="rounded"
                           sx={{ width: 56, height: 56 }}
                         >
-                          <AlbumIcon />
+                          <Album />
                         </Avatar>
                       </ListItemAvatar>
                       <ListItemText
@@ -676,7 +671,7 @@ const SearchPage: React.FC<SearchPageProps> = ({ onSongSelect, onPlaylistSelect,
                     gap: 2,
                   }}
                 >
-                  <PlaylistPlayIcon sx={{ fontSize: 64, color: 'text.disabled', opacity: 0.3 }} />
+                  <PlaylistPlay sx={{ fontSize: 64, color: 'text.disabled', opacity: 0.3 }} />
                   <Typography variant="body1" sx={{ color: 'text.secondary' }}>
                     No playlists found
                   </Typography>
@@ -704,7 +699,7 @@ const SearchPage: React.FC<SearchPageProps> = ({ onSongSelect, onPlaylistSelect,
                           variant="rounded"
                           sx={{ width: 56, height: 56 }}
                         >
-                          <PlaylistPlayIcon />
+                          <PlaylistPlay />
                         </Avatar>
                       </ListItemAvatar>
                       <ListItemText
@@ -756,7 +751,7 @@ const SearchPage: React.FC<SearchPageProps> = ({ onSongSelect, onPlaylistSelect,
                     gap: 2,
                   }}
                 >
-                  <PersonIcon sx={{ fontSize: 64, color: 'text.disabled', opacity: 0.3 }} />
+                  <Person sx={{ fontSize: 64, color: 'text.disabled', opacity: 0.3 }} />
                   <Typography variant="body1" sx={{ color: 'text.secondary' }}>
                     No artists found
                   </Typography>
@@ -788,7 +783,7 @@ const SearchPage: React.FC<SearchPageProps> = ({ onSongSelect, onPlaylistSelect,
                           variant="circular"
                           sx={{ width: 56, height: 56 }}
                         >
-                          <PersonIcon />
+                          <Person />
                         </Avatar>
                       </ListItemAvatar>
                       <ListItemText
@@ -840,7 +835,7 @@ const SearchPage: React.FC<SearchPageProps> = ({ onSongSelect, onPlaylistSelect,
             gap: 2,
           }}
         >
-          <SearchIcon sx={{ fontSize: 64, color: '#404040' }} />
+          <Search sx={{ fontSize: 64, color: '#404040' }} />
           <Typography variant="h6" sx={{ color: '#b3b3b3' }}>
             No results found
           </Typography>
@@ -901,25 +896,25 @@ const SearchPage: React.FC<SearchPageProps> = ({ onSongSelect, onPlaylistSelect,
       >
         <MenuItem onClick={handlePlayNow}>
           <ListItemIcon>
-            <PlayArrowIcon fontSize="small" />
+            <PlayArrow fontSize="small" />
           </ListItemIcon>
           <Typography variant="body2">Play Now</Typography>
         </MenuItem>
         <MenuItem onClick={handlePlayNext}>
           <ListItemIcon>
-            <QueueMusicIcon fontSize="small" />
+            <QueueMusic fontSize="small" />
           </ListItemIcon>
           <Typography variant="body2">Play Next</Typography>
         </MenuItem>
         <MenuItem onClick={handleAddToQueue}>
           <ListItemIcon>
-            <PlaylistAddIcon fontSize="small" />
+            <PlaylistAdd fontSize="small" />
           </ListItemIcon>
           <Typography variant="body2">Add to Queue</Typography>
         </MenuItem>
         <MenuItem onClick={handleAddToFavourites}>
           <ListItemIcon>
-            <FavoriteIcon fontSize="small" />
+            <Favorite fontSize="small" />
           </ListItemIcon>
           <Typography variant="body2">Add to Favourites</Typography>
         </MenuItem>

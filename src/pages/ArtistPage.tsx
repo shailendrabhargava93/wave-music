@@ -2,17 +2,10 @@ import React, { useEffect, useState } from 'react';
 import Menu from '@mui/material/Menu';
 import MenuItem from '@mui/material/MenuItem';
 import ListItemIcon from '@mui/material/ListItemIcon';
-import MoreVertIcon from '@mui/icons-material/MoreVert';
+import { MoreVertical } from '../icons';
 // About dialog removed per request
 import { Box, Container, Typography, Avatar, IconButton, Skeleton, List, Chip, Button } from '@mui/material';
-import ArrowBackIcon from '@mui/icons-material/ArrowBack';
-import PlayArrowIcon from '@mui/icons-material/PlayArrow';
-import AlbumIcon from '@mui/icons-material/Album';
-import QueueMusicIcon from '@mui/icons-material/QueueMusic';
-import PlaylistAddIcon from '@mui/icons-material/PlaylistAdd';
-import VerifiedIcon from '@mui/icons-material/Verified';
-import LanguageIcon from '@mui/icons-material/Language';
-import FavoriteIcon from '@mui/icons-material/Favorite';
+import { ArrowBack, PlayArrow, Album, QueueMusic, PlaylistAdd, Verified, Language, Favorite } from '../icons';
 import { saavnApi } from '../services/saavnApi';
 import { FAVOURITE_SONGS_KEY, persistFavourites, readFavourites } from '../services/storage';
 import SongItem from '../components/SongItem';
@@ -92,7 +85,7 @@ const ArtistPage: React.FC<ArtistPageProps> = ({ artistId, artistName, artistIma
     <Box sx={{ pb: 14, minHeight: '100vh' }}>
       <Box sx={{ position: 'fixed', top: 0, left: 0, right: 0, zIndex: 1200, backgroundColor: 'background.default', py: 0.5 }}>
         <Container maxWidth="sm" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-          <IconButton onClick={onBack} sx={{ color: 'text.primary' }}><ArrowBackIcon /></IconButton>
+          <IconButton onClick={onBack} sx={{ color: 'text.primary' }}><ArrowBack /></IconButton>
           <Typography variant="h6" sx={{ color: 'text.primary', fontWeight: 600 }}>{artistName || decodeHtmlEntities(artistData?.name || '')}</Typography>
         </Container>
       </Box>
@@ -103,19 +96,19 @@ const ArtistPage: React.FC<ArtistPageProps> = ({ artistId, artistName, artistIma
           {loading ? (
             <Skeleton variant="circular" width={120} height={120} />
           ) : (
-            <Avatar src={getImageFromData()} variant="rounded" sx={{ width: 120, height: 120, boxShadow: '0 6px 18px rgba(0,0,0,0.2)' }}>
-              <AlbumIcon sx={{ fontSize: 48 }} />
+            <Avatar src={getImageFromData()} variant="rounded" imgProps={{ loading: 'lazy' }} sx={{ width: 120, height: 120, boxShadow: '0 6px 18px rgba(0,0,0,0.2)' }}>
+              <Album sx={{ fontSize: 48 }} />
             </Avatar>
           )}
           <Box sx={{ flex: 1 }}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
               <Typography variant="h5" sx={{ fontWeight: 700 }}>{artistName || decodeHtmlEntities(artistData?.name || '')}</Typography>
-              {!loading && artistData?.isVerified ? <VerifiedIcon color="primary" sx={{ fontSize: 18 }} /> : null}
+              {!loading && artistData?.isVerified ? <Verified color="primary" sx={{ fontSize: 18 }} /> : null}
             </Box>
 
             <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', flexWrap: 'wrap', mt: 0.5 }}>
               {!loading && typeof artistData?.followerCount !== 'undefined' ? (
-                <Chip size="small" icon={<FavoriteIcon />} label={`${artistData.followerCount.toLocaleString()} followers`} />
+                <Chip size="small" icon={<Favorite />} label={`${artistData.followerCount.toLocaleString()} followers`} />
               ) : loading ? <Skeleton variant="rectangular" width={120} height={28} /> : null}
 
               {!loading && artistData?.fanCount ? (
@@ -123,7 +116,7 @@ const ArtistPage: React.FC<ArtistPageProps> = ({ artistId, artistName, artistIma
               ) : loading ? <Skeleton variant="rectangular" width={90} height={28} /> : null}
 
               {!loading && artistData?.dominantLanguage ? (
-                <Chip size="small" icon={<LanguageIcon />} label={String(artistData.dominantLanguage).toUpperCase()} />
+                <Chip size="small" icon={<Language />} label={String(artistData.dominantLanguage).toUpperCase()} />
               ) : null}
             </Box>
 
@@ -141,7 +134,7 @@ const ArtistPage: React.FC<ArtistPageProps> = ({ artistId, artistName, artistIma
           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
             <Typography variant="h6">Top Songs</Typography>
             {!loading ? (
-              <Button size="small" startIcon={<PlayArrowIcon />} onClick={() => { if (onSongSelect && topSongs && topSongs.length > 0) onSongSelect(topSongs[0], topSongs); }}>
+              <Button size="small" startIcon={<PlayArrow />} onClick={() => { if (onSongSelect && topSongs && topSongs.length > 0) onSongSelect(topSongs[0], topSongs); }}>
                 Play All
               </Button>
             ) : <Skeleton variant="rectangular" width={80} height={32} />}
@@ -174,7 +167,7 @@ const ArtistPage: React.FC<ArtistPageProps> = ({ artistId, artistName, artistIma
                           onClick={(e) => { e.stopPropagation(); setMenuAnchor(e.currentTarget); setMenuTarget(song); }}
                           sx={{ color: 'text.secondary' }}
                         >
-                          <MoreVertIcon />
+                          <MoreVertical />
                         </IconButton>
                       }
                     />
@@ -239,6 +232,7 @@ const ArtistPage: React.FC<ArtistPageProps> = ({ artistId, artistName, artistIma
                   >
                     <Box sx={{ position: 'relative' }}>
                       <Avatar
+                        imgProps={{ loading: 'lazy' }}
                         src={albumImage}
                         variant="rounded"
                         sx={{
@@ -248,14 +242,14 @@ const ArtistPage: React.FC<ArtistPageProps> = ({ artistId, artistName, artistIma
                           boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)',
                         }}
                       >
-                        <AlbumIcon sx={{ fontSize: 60 }} />
+                        <Album sx={{ fontSize: 60 }} />
                       </Avatar>
                       <IconButton
                         size="small"
                         sx={{ position: 'absolute', right: 6, bottom: 6, bgcolor: 'background.paper' }}
                         onClick={(e) => { e.stopPropagation(); if (onAlbumSelect) onAlbumSelect(albumId, albumTitle, albumImage); }}
                       >
-                        <PlayArrowIcon />
+                        <PlayArrow />
                       </IconButton>
                     </Box>
                     <Typography
@@ -330,7 +324,7 @@ const ArtistPage: React.FC<ArtistPageProps> = ({ artistId, artistName, artistIma
                         onClick={(e) => { e.stopPropagation(); setMenuAnchor(e.currentTarget); setMenuTarget(item); }}
                         sx={{ color: 'text.secondary' }}
                       >
-                        <MoreVertIcon />
+                        <MoreVertical />
                       </IconButton>
                     }
                   />
@@ -398,26 +392,26 @@ const ArtistPage: React.FC<ArtistPageProps> = ({ artistId, artistName, artistIma
       >
         <MenuItem onClick={handlePlayNow}>
           <ListItemIcon>
-            <PlayArrowIcon fontSize="small" />
+            <PlayArrow fontSize="small" />
           </ListItemIcon>
           <Typography variant="body2">Play Now</Typography>
         </MenuItem>
         <MenuItem onClick={handlePlayNext}>
           <ListItemIcon>
-            <QueueMusicIcon fontSize="small" />
+            <QueueMusic fontSize="small" />
           </ListItemIcon>
           <Typography variant="body2">Play Next</Typography>
         </MenuItem>
         <MenuItem onClick={handleAddToQueue}>
           <ListItemIcon>
-            <PlaylistAddIcon fontSize="small" />
+            <PlaylistAdd fontSize="small" />
           </ListItemIcon>
           <Typography variant="body2">Add to Queue</Typography>
         </MenuItem>
         {/* Go To Album removed on Artist page */}
         <MenuItem onClick={handleToggleFavourite}>
           <ListItemIcon>
-            <FavoriteIcon fontSize="small" />
+            <Favorite fontSize="small" />
           </ListItemIcon>
           <Typography variant="body2">{isFavouriteLocal ? 'Remove from Favourites' : 'Add to Favourites'}</Typography>
         </MenuItem>

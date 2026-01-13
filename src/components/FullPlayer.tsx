@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, lazy, Suspense } from 'react';
 import { 
   Box, 
   Typography, 
@@ -12,20 +12,8 @@ import {
   ListItemText,
   Snackbar,
 } from '@mui/material';
-import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
-import FavoriteIcon from '@mui/icons-material/Favorite';
-import FavoriteBorderIcon from '@mui/icons-material/FavoriteBorder';
-import SkipPreviousIcon from '@mui/icons-material/SkipPrevious';
-import PlayArrowIcon from '@mui/icons-material/PlayArrow';
-import PauseIcon from '@mui/icons-material/Pause';
-import SkipNextIcon from '@mui/icons-material/SkipNext';
-import RepeatIcon from '@mui/icons-material/Repeat';
-import RepeatOneIcon from '@mui/icons-material/RepeatOne';
-import ShuffleIcon from '@mui/icons-material/Shuffle';
-import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
-import CloseIcon from '@mui/icons-material/Close';
-import QueueMusicIcon from '@mui/icons-material/QueueMusic';
-import UpNextDrawer from './UpNextDrawer';
+import { KeyboardArrowDown, Favorite, FavoriteBorder, SkipPrevious, PlayArrow, Pause, SkipNext, Repeat, RepeatOne, Shuffle, MoreHoriz, Close, QueueMusic } from '../icons';
+const UpNextDrawer = lazy(() => import('./UpNextDrawer'));
 import { saavnApi } from '../services/saavnApi';
 import { Song } from '../types/api';
 import { FAVOURITE_SONGS_KEY, persistFavourites, readFavourites } from '../services/storage';
@@ -342,7 +330,7 @@ const FullPlayer: React.FC<FullPlayerProps> = ({
             sx={{ color: 'text.primary' }}
             aria-label="close player"
           >
-            <KeyboardArrowDownIcon fontSize="large" />
+            <KeyboardArrowDown fontSize="large" />
           </IconButton>
           <Box sx={{ textAlign: 'center' }}>
             <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 600, letterSpacing: 1 }}>
@@ -359,7 +347,7 @@ const FullPlayer: React.FC<FullPlayerProps> = ({
             aria-label="song information"
             onClick={() => setInfoDialogOpen(true)}
           >
-            <InfoOutlinedIcon />
+            <MoreHoriz />
           </IconButton>
         </Box>
 
@@ -375,6 +363,7 @@ const FullPlayer: React.FC<FullPlayerProps> = ({
         >
           <Avatar
             src={albumArt}
+            imgProps={{ loading: 'lazy' }}
             variant="rounded"
             sx={{
               width: '100%',
@@ -402,7 +391,7 @@ const FullPlayer: React.FC<FullPlayerProps> = ({
           >
             <Box sx={{ flex: 1, minWidth: 0 }}>
               <Typography
-                variant="h5"
+                variant="h6"
                 sx={{
                   color: 'text.primary',
                   fontWeight: 'bold',
@@ -434,7 +423,7 @@ const FullPlayer: React.FC<FullPlayerProps> = ({
               }}
               aria-label="favorite"
             >
-              {isFavorite ? <FavoriteIcon /> : <FavoriteBorderIcon />}
+              {isFavorite ? <Favorite /> : <FavoriteBorder />}
             </IconButton>
           </Box>
         </Box>
@@ -505,14 +494,14 @@ const FullPlayer: React.FC<FullPlayerProps> = ({
             }}
             aria-label="shuffle"
           >
-            <ShuffleIcon sx={{ fontSize: 20 }} />
+            <Shuffle sx={{ fontSize: 20 }} />
           </IconButton>
           <IconButton
             onClick={onPreviousSong}
             sx={{ color: 'text.primary' }}
             aria-label="previous track"
           >
-            <SkipPreviousIcon sx={{ fontSize: 40 }} />
+            <SkipPrevious sx={{ fontSize: 40 }} />
           </IconButton>
           <IconButton
             onClick={togglePlay}
@@ -529,9 +518,9 @@ const FullPlayer: React.FC<FullPlayerProps> = ({
             aria-label={isPlaying ? 'pause' : 'play'}
           >
             {isPlaying ? (
-              <PauseIcon sx={{ fontSize: 36 }} />
+              <Pause sx={{ fontSize: 36 }} />
             ) : (
-              <PlayArrowIcon sx={{ fontSize: 36 }} />
+              <PlayArrow sx={{ fontSize: 36 }} />
             )}
           </IconButton>
           <IconButton
@@ -539,7 +528,7 @@ const FullPlayer: React.FC<FullPlayerProps> = ({
             sx={{ color: 'text.primary' }}
             aria-label="next track"
           >
-            <SkipNextIcon sx={{ fontSize: 40 }} />
+            <SkipNext sx={{ fontSize: 40 }} />
           </IconButton>
           <IconButton
             onClick={() => {
@@ -557,9 +546,9 @@ const FullPlayer: React.FC<FullPlayerProps> = ({
             aria-label="repeat"
           >
             {repeatMode === 'one' ? (
-              <RepeatOneIcon sx={{ fontSize: 20 }} />
+              <RepeatOne sx={{ fontSize: 20 }} />
             ) : (
-              <RepeatIcon sx={{ fontSize: 20 }} />
+              <Repeat sx={{ fontSize: 20 }} />
             )}
           </IconButton>
         </Box>
@@ -590,7 +579,7 @@ const FullPlayer: React.FC<FullPlayerProps> = ({
             },
           }}
         >
-          <QueueMusicIcon sx={{ color: 'primary.main' }} />
+          <QueueMusic sx={{ color: 'primary.main' }} />
           <Typography variant="body2" sx={{ fontWeight: 600, color: 'text.primary' }}>
             Up Next
           </Typography>
@@ -598,27 +587,29 @@ const FullPlayer: React.FC<FullPlayerProps> = ({
       </Box>
 
       {/* Up Next Drawer */}
-      <UpNextDrawer
-        open={upNextOpen}
-        onClose={() => setUpNextOpen(false)}
-        items={upNextSongs}
-        loading={suggestionsLoading}
-        currentSongId={songId}
-        onSongSelect={(song) => {
-          if (onSongSelect) {
-            const merged = [...songQueue, ...suggestions];
-            const songIndex = merged.findIndex(s => s.id === song.id);
-            const remainingSongs = songIndex >= 0 ? merged.slice(songIndex) : [song];
-            onSongSelect(song, remainingSongs);
-          }
-        }}
+      <Suspense fallback={null}>
+        <UpNextDrawer
+          open={upNextOpen}
+          onClose={() => setUpNextOpen(false)}
+          items={upNextSongs}
+          loading={suggestionsLoading}
+          currentSongId={songId}
+          onSongSelect={(song) => {
+            if (onSongSelect) {
+              const merged = [...songQueue, ...suggestions];
+              const songIndex = merged.findIndex(s => s.id === song.id);
+              const remainingSongs = songIndex >= 0 ? merged.slice(songIndex) : [song];
+              onSongSelect(song, remainingSongs);
+            }
+          }}
           onReorder={(updated: Song[]) => {
             if (!onReorder) return;
             // Forward the full updated order to the app-level handler so it can
             // derive and persist the new queue/context ordering as needed.
             onReorder(updated);
           }}
-      />
+        />
+      </Suspense>
 
       {/* Song Info Drawer */}
       <Drawer
@@ -661,7 +652,7 @@ const FullPlayer: React.FC<FullPlayerProps> = ({
             sx={{ color: 'text.secondary', p: 0.5 }}
             aria-label="close"
           >
-            <CloseIcon fontSize="small" />
+            <Close fontSize="small" />
           </IconButton>
         </Box>
         <Box sx={{ p: 1, pl: 2, maxHeight: '60vh', overflowY: 'auto' }}>
