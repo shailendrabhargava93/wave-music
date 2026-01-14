@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Box, Container, Typography, Avatar, IconButton, Skeleton } from '@mui/material';
-import ArrowBackIcon from '@mui/icons-material/ArrowBack';
-import MusicNoteIcon from '@mui/icons-material/MusicNote';
+import { ArrowBack, MusicNote } from '../icons';
 import { getMeta } from '../services/storage';
 
 interface ArtistPreview {
@@ -31,7 +30,7 @@ const ArtistsPage: React.FC<{ onBack: () => void; onArtistSelect?: (id?: string,
     <Box sx={{ minHeight: '100vh', bgcolor: 'background.default', pb: 14 }}>
       <Box sx={{ position: 'fixed', top: 0, left: 0, right: 0, zIndex: 1200, backgroundColor: 'background.default', py: 0.5 }}>
         <Container maxWidth="sm" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-          <IconButton onClick={onBack} sx={{ color: 'text.primary' }}><ArrowBackIcon /></IconButton>
+          <IconButton onClick={onBack} sx={{ color: 'text.primary' }}><ArrowBack /></IconButton>
           <Typography variant="h6" sx={{ color: 'text.primary', fontWeight: 600 }}>All Artists</Typography>
         </Container>
       </Box>
@@ -47,7 +46,7 @@ const ArtistsPage: React.FC<{ onBack: () => void; onArtistSelect?: (id?: string,
               ))
             : artists.map(artist => (
                 <Box key={artist.id ?? artist.name} sx={{ textAlign: 'center', cursor: 'pointer' }} onClick={() => onArtistSelect && onArtistSelect(artist.id, artist.name, artist.image)}>
-                  <Avatar src={artist.image || undefined} variant="circular" sx={{ width: ARTIST_AVATAR_SIZE, height: ARTIST_AVATAR_SIZE, mx: 'auto', mb: 1 }}>{!artist.image && <MusicNoteIcon />}</Avatar>
+                  <Avatar src={artist.image || undefined} variant="circular" sx={{ width: ARTIST_AVATAR_SIZE, height: ARTIST_AVATAR_SIZE, mx: 'auto', mb: 1 }}>{!artist.image && <MusicNote />}</Avatar>
                   <Typography variant="body2" sx={{ fontWeight: 600, color: 'text.primary' }}>{artist.name}</Typography>
                 </Box>
               ))}

@@ -1,12 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Box, Typography, CircularProgress, IconButton, Skeleton, Menu, MenuItem, ListItemIcon, Container } from '@mui/material';
-import ArrowBackIcon from '@mui/icons-material/ArrowBack';
-import MoreVertIcon from '@mui/icons-material/MoreVert';
-import PlayArrowIcon from '@mui/icons-material/PlayArrow';
-import QueueMusicIcon from '@mui/icons-material/QueueMusic';
-import PlaylistAddIcon from '@mui/icons-material/PlaylistAdd';
-import FavoriteBorderIcon from '@mui/icons-material/FavoriteBorder';
-import FavoriteIcon from '@mui/icons-material/Favorite';
+import { ArrowLeft, MoreVertical, Play, Music, PlusSquare, Heart } from '../icons';
 import { Song } from '../types/api';
 import { SoundChartsItem } from '../services/soundChartsApi';
 import { FAVOURITE_SONGS_KEY, persistFavourites, readFavourites } from '../services/storage';
@@ -155,7 +149,7 @@ const AllSongsPage: React.FC<AllSongsPageProps> = ({ onSongSelect, chartSongs, o
               },
             }}
           >
-            <ArrowBackIcon />
+            <ArrowLeft sx={{ fontSize: 20 }} />
           </IconButton>
           <Typography
             variant="h6"
@@ -308,7 +302,7 @@ const AllSongsPage: React.FC<AllSongsPageProps> = ({ onSongSelect, chartSongs, o
                     size="small"
                     sx={{ color: 'text.secondary' }}
                   >
-                    <MoreVertIcon fontSize="small" />
+                    <MoreVertical sx={{ fontSize: 18 }} />
                   </IconButton>
                 )}
               </Box>
@@ -334,14 +328,14 @@ const AllSongsPage: React.FC<AllSongsPageProps> = ({ onSongSelect, chartSongs, o
       >
         <MenuItem onClick={() => selectedSong?.saavnData && onSongSelect(selectedSong.saavnData)}>
           <ListItemIcon>
-            <PlayArrowIcon fontSize="small" />
+            <Play fontSize="small" />
           </ListItemIcon>
           Play
         </MenuItem>
         {onPlayNext && (
           <MenuItem onClick={handlePlayNext}>
             <ListItemIcon>
-              <PlaylistAddIcon fontSize="small" />
+              <PlusSquare fontSize="small" />
             </ListItemIcon>
             Play Next
           </MenuItem>
@@ -349,7 +343,7 @@ const AllSongsPage: React.FC<AllSongsPageProps> = ({ onSongSelect, chartSongs, o
         {onAddToQueue && (
           <MenuItem onClick={handleAddToQueue}>
             <ListItemIcon>
-              <QueueMusicIcon fontSize="small" />
+              <Music fontSize="small" />
             </ListItemIcon>
             Add to Queue
           </MenuItem>
@@ -357,9 +351,9 @@ const AllSongsPage: React.FC<AllSongsPageProps> = ({ onSongSelect, chartSongs, o
         <MenuItem onClick={handleAddToFavourites}>
           <ListItemIcon>
             {selectedSong?.saavnData && favouriteSongs.includes(selectedSong.saavnData.id) ? (
-              <FavoriteIcon fontSize="small" />
+              <Heart fontSize="small" />
             ) : (
-              <FavoriteBorderIcon fontSize="small" />
+              <Heart fontSize="small" />
             )}
           </ListItemIcon>
           {selectedSong?.saavnData && favouriteSongs.includes(selectedSong.saavnData.id) ? 'Remove from Favorites' : 'Add to Favorites'}

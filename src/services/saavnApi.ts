@@ -230,6 +230,24 @@ export const saavnApi = {
         }
         const data = await response.json();
         setLastFetchFailed(false);
+
+        // Normalize response shape: some upstream responses may place songs
+        // at `data.songs`, `songs`, or directly under `data` as an array.
+        try {
+          const songsFromData = Array.isArray(data?.data?.songs) ? data.data.songs :
+            Array.isArray(data?.songs) ? data.songs :
+            Array.isArray(data?.data) ? data.data : [];
+
+          // If we found songs at a top-level path but not under data.songs,
+          // ensure callers always see `response.data.songs` populated.
+          if (!Array.isArray(data?.data?.songs) && songsFromData.length > 0) {
+            data.data = data.data || {};
+            data.data.songs = songsFromData;
+          }
+        } catch (err) {
+          // ignore normalization errors and return raw data
+        }
+
         return data;
       })();
 

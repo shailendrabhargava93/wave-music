@@ -1,9 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Box, Avatar, Typography, IconButton, Paper, CircularProgress, LinearProgress } from '@mui/material';
-import PlayArrowIcon from '@mui/icons-material/PlayArrow';
-import PauseIcon from '@mui/icons-material/Pause';
-import SkipNextIcon from '@mui/icons-material/SkipNext';
-import SkipPreviousIcon from '@mui/icons-material/SkipPrevious';
+import { PlayArrow, Pause, SkipNext, SkipPrevious } from '../icons';
 
 interface MusicPlayerProps {
   songTitle?: string;
@@ -78,7 +75,7 @@ const MusicPlayer: React.FC<MusicPlayerProps> = ({
 
       <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', px: 2, py: 1 }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flex: 1, minWidth: 0, cursor: 'pointer' }} onClick={onOpenFullPlayer}>
-          <Avatar src={albumArt} variant="rounded" sx={{ width: 48, height: 48, bgcolor: 'action.hover' }}>
+          <Avatar src={albumArt} variant="rounded" imgProps={{ loading: 'lazy' }} sx={{ width: 48, height: 48, bgcolor: 'action.hover' }}>
             🎵
           </Avatar>
           <Box sx={{ minWidth: 0, flex: 1 }}>
@@ -102,13 +99,13 @@ const MusicPlayer: React.FC<MusicPlayerProps> = ({
           ) : (
             <>
               <IconButton onClick={onPreviousSong} sx={{ color: 'text.primary', '&:hover': { bgcolor: 'action.hover' } }} aria-label="previous track">
-                <SkipPreviousIcon />
+                <SkipPrevious />
               </IconButton>
               <IconButton onClick={togglePlay} sx={{ color: 'text.primary', '&:hover': { bgcolor: 'action.hover' }, mx: 0.5 }} aria-label={isPlaying ? 'pause' : 'play'}>
-                {isPlaying ? <PauseIcon /> : <PlayArrowIcon />}
+                {isPlaying ? <Pause /> : <PlayArrow />}
               </IconButton>
               <IconButton onClick={onNextSong} sx={{ color: 'text.primary', '&:hover': { bgcolor: 'action.hover' } }} aria-label="next track">
-                <SkipNextIcon />
+                <SkipNext />
               </IconButton>
             </>
           )}

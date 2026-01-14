@@ -1,13 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Box, Typography, List, IconButton, Menu, MenuItem, ListItemIcon, Container } from '@mui/material';
 import SongItemSkeleton from '../components/SongItemSkeleton';
-import ArrowBackIcon from '@mui/icons-material/ArrowBack';
-import MoreVertIcon from '@mui/icons-material/MoreVert';
-import PlayArrowIcon from '@mui/icons-material/PlayArrow';
-import QueueMusicIcon from '@mui/icons-material/QueueMusic';
-import PlaylistAddIcon from '@mui/icons-material/PlaylistAdd';
-import FavoriteIcon from '@mui/icons-material/Favorite';
-import ClearAllIcon from '@mui/icons-material/ClearAll';
+import { PlayArrow, ArrowBack, ClearAll, MoreVertical, PlaylistAdd, QueueMusic, Favorite } from '../icons';
 import { Song } from '../types/api';
 import SongItem from '../components/SongItem';
 import { FAVOURITE_SONGS_KEY, getMeta, persistFavourites, readFavourites, setMeta } from '../services/storage';
@@ -156,7 +150,7 @@ const RecentlyPlayedPage: React.FC<RecentlyPlayedPageProps> = ({ onBack, onSongS
               },
             }}
           >
-            <ArrowBackIcon />
+            <ArrowBack />
           </IconButton>
           <Typography variant="h6" sx={{ color: 'text.primary', fontWeight: 600, fontSize: '1.1rem', flex: 1, pl: 0.5 }} noWrap>
             Recently Played
@@ -168,7 +162,7 @@ const RecentlyPlayedPage: React.FC<RecentlyPlayedPageProps> = ({ onBack, onSongS
               sx={{ color: 'text.secondary' }}
               title="Clear all recently played songs"
             >
-              <ClearAllIcon />
+              <ClearAll />
             </IconButton>
           )}
         </Container>
@@ -204,7 +198,7 @@ const RecentlyPlayedPage: React.FC<RecentlyPlayedPageProps> = ({ onBack, onSongS
                   edge="end"
                   onClick={(e) => handleMenuOpen(e, song)}
                 >
-                  <MoreVertIcon />
+                  <MoreVertical />
                 </IconButton>
               }
             />
@@ -220,25 +214,25 @@ const RecentlyPlayedPage: React.FC<RecentlyPlayedPageProps> = ({ onBack, onSongS
       >
         <MenuItem onClick={handlePlayNow}>
           <ListItemIcon>
-            <PlayArrowIcon fontSize="small" />
+            <PlayArrow fontSize="small" />
           </ListItemIcon>
           <Typography variant="body2">Play Now</Typography>
         </MenuItem>
         <MenuItem onClick={handlePlayNext}>
           <ListItemIcon>
-            <PlaylistAddIcon fontSize="small" />
+            <PlaylistAdd fontSize="small" />
           </ListItemIcon>
           <Typography variant="body2">Play Next</Typography>
         </MenuItem>
         <MenuItem onClick={handleAddToQueue}>
           <ListItemIcon>
-            <QueueMusicIcon fontSize="small" />
+            <QueueMusic fontSize="small" />
           </ListItemIcon>
           <Typography variant="body2">Add to Queue</Typography>
         </MenuItem>
         <MenuItem onClick={handleAddToFavourites}>
           <ListItemIcon>
-            <FavoriteIcon fontSize="small" />
+            <Favorite fontSize="small" />
           </ListItemIcon>
           <Typography variant="body2">Add to Favourites</Typography>
         </MenuItem>

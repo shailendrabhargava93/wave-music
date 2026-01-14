@@ -1,25 +1,25 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, lazy, Suspense } from 'react';
 import { ThemeProvider, CssBaseline, Box, Container, Snackbar } from '@mui/material';
 import { darkTheme, lightTheme } from './theme';
 import BottomNav from './components/BottomNav';
-import MusicPlayer from './components/MusicPlayer';
-import FullPlayer from './components/FullPlayer';
+const MusicPlayer = lazy(() => import('./components/MusicPlayer'));
 import InstallPrompt from './components/InstallPrompt';
-import HomePage from './pages/HomePage';
-import SettingsPage from './pages/SettingsPage';
 import WelcomeScreen from './pages/WelcomeScreen';
 import Splash from './components/Splash';
-import PlaylistPage from './pages/PlaylistPage';
-import FavouritesPage from './pages/FavouritesPage';
-import AllSongsPage from './pages/AllSongsPage';
-import RecentlyPlayedPage from './pages/RecentlyPlayedPage';
-import ExplorePage from './pages/ExplorePage';
-import ArtistsPage from './pages/ArtistsPage';
-import ArtistPage from './pages/ArtistPage';
+const FullPlayer = lazy(() => import('./components/FullPlayer'));
+const HomePage = lazy(() => import('./pages/HomePage'));
+const SettingsPage = lazy(() => import('./pages/SettingsPage'));
+const PlaylistPage = lazy(() => import('./pages/PlaylistPage'));
+const FavouritesPage = lazy(() => import('./pages/FavouritesPage'));
+const AllSongsPage = lazy(() => import('./pages/AllSongsPage'));
+const RecentlyPlayedPage = lazy(() => import('./pages/RecentlyPlayedPage'));
+const ExplorePage = lazy(() => import('./pages/ExplorePage'));
+const ArtistsPage = lazy(() => import('./pages/ArtistsPage'));
+const ArtistPage = lazy(() => import('./pages/ArtistPage'));
+const SearchPage = lazy(() => import('./pages/SearchPage'));
 import { Song, CurrentSong } from './types/api';
 import { saavnApi } from './services/saavnApi';
 import { soundChartsApi, SoundChartsItem } from './services/soundChartsApi';
-import SearchPage from './pages/SearchPage';
 import { saveSongMetadata, saveDownloadRecord, setMeta, getDownloadRecord, getMeta, migrateLocalStorage } from './services/storage';
 import { subscribeNetworkStatus } from './services/networkStatus';
 import {
@@ -114,6 +114,8 @@ function App() {
   
   // Recently played page state
   const [showRecentlyPlayed, setShowRecentlyPlayed] = useState(false);
+  // Show "All Charts" view overlay
+  const [showAllCharts, setShowAllCharts] = useState(false);
   
   const trackBlobUrl = useCallback((url?: string | null) => {
     if (offlineBlobUrlRef.current && offlineBlobUrlRef.current.startsWith('blob:')) {
@@ -214,64 +216,47 @@ function App() {
   }, []);
   // Playlist state
   const [selectedPlaylist, setSelectedPlaylist] = useState<{
-    id: string;
-    name: string;
-    image: string;
-    type?: 'playlist' | 'album' | 'artist';
+    id?: string;
+    name?: string;
+    image?: string;
+    type?: string;
     sourceTab?: string;
-    previous?: { id: string; name: string; image: string; type?: 'playlist' | 'album' | 'artist'; sourceTab?: string; previous?: any } | null;
+    previous?: any;
   } | null>(null);
-  
-  // View All Chart Songs state
-  const [showAllCharts, setShowAllCharts] = useState(false);
-
-  // Manage browser history entries so mobile back gesture/popstate
-  // closes in-app overlays (playlist, charts, recently played, full player)
-  // instead of closing the PWA / navigating away.
+  // Popstate handler: map history state into app UI state
   useEffect(() => {
-    // Ensure there's an app-specific history entry we control
-    try {
-      const initialState = { app: 'wave', view: 'home' };
-      // Replace any external state with our initial app state and then
-      // push one so there's a safe entry to return to when user navigates back.
-      window.history.replaceState(initialState, '');
-      window.history.pushState(initialState, '');
-    } catch (err) {
-      console.debug('History initialization failed', err);
-    }
-
-    const onPopState = (ev: PopStateEvent) => {
-      const state = ev.state as any;
-      // If this is our app's state object, map it to app UI state
-      if (state && state.app === 'wave') {
-        const view = state.view as string | undefined;
-        // When popping back to home view, close overlays
-        if (!view || view === 'home') {
-          setSelectedPlaylist(null);
-          setShowAllCharts(false);
-          setShowRecentlyPlayed(false);
-          setFullPlayerOpen(false);
-          setActiveTab('home');
-        } else if (view === 'playlist') {
-          // If state indicates playlist view we don't automatically open a playlist
-          // because that requires knowing which playlist; leave current UI as-is.
-        } else if (view === 'charts') {
-          setShowAllCharts(true);
-        } else if (view === 'recent') {
-          setShowRecentlyPlayed(true);
-        } else if (view === 'fullplayer') {
-          setFullPlayerOpen(true);
-        }
-      } else {
-        // If the popped state is not ours, re-insert a home state to avoid exiting
-        try {
-          const home = { app: 'wave', view: 'home' };
-          window.history.replaceState(home, '');
-        } catch (err) {
-          // ignore
-        }
+  const onPopState = (ev: PopStateEvent) => {
+    const state = ev && (ev as any).state ? (ev as any).state : undefined;
+    // If this is our app's state object, map it to app UI state
+    if (state && state.app === 'wave') {
+      const view = state.view as string | undefined;
+      // When popping back to home view, close overlays
+      if (!view || view === 'home') {
+        setSelectedPlaylist(null);
+        setShowAllCharts(false);
+        setShowRecentlyPlayed(false);
+        setFullPlayerOpen(false);
+        setActiveTab('home');
+      } else if (view === 'playlist') {
+        // If state indicates playlist view we don't automatically open a playlist
+        // because that requires knowing which playlist; leave current UI as-is.
+      } else if (view === 'charts') {
+        setShowAllCharts(true);
+      } else if (view === 'recent') {
+        setShowRecentlyPlayed(true);
+      } else if (view === 'fullplayer') {
+        setFullPlayerOpen(true);
       }
-    };
+    } else {
+      // If the popped state is not ours, re-insert a home state to avoid exiting
+      try {
+        const home = { app: 'wave', view: 'home' };
+        window.history.replaceState(home, '');
+      } catch (err) {
+        // ignore
+      }
+    }
+  };
 
     window.addEventListener('popstate', onPopState);
     return () => {
@@ -1175,9 +1160,9 @@ function App() {
       if (selectedPlaylist.type === 'artist') {
         return (
           <ArtistPage
-            artistId={selectedPlaylist.id}
-            artistName={selectedPlaylist.name}
-            artistImage={selectedPlaylist.image}
+            artistId={selectedPlaylist.id!}
+            artistName={selectedPlaylist.name!}
+            artistImage={selectedPlaylist.image!}
             onBack={handleBackFromPlaylist}
             onSongSelect={handleSongSelect}
             onAddToQueue={handleAddToQueue}
@@ -1189,12 +1174,12 @@ function App() {
 
       return (
         <PlaylistPage
-          playlistId={selectedPlaylist.id}
-          playlistName={selectedPlaylist.name}
-          playlistImage={selectedPlaylist.image}
+          playlistId={selectedPlaylist.id || ''}
+          playlistName={selectedPlaylist.name || ''}
+          playlistImage={selectedPlaylist.image || ''}
           onBack={handleBackFromPlaylist}
           onSongSelect={handleSongSelect}
-          type={selectedPlaylist.type}
+          type={selectedPlaylist.type as 'playlist' | 'album' | 'artist' | undefined}
           onAddToQueue={handleAddToQueue}
           onPlayNext={handlePlayNext}
           onShowSnackbar={(msg) => {
@@ -1298,11 +1283,12 @@ function App() {
               px: { xs: 0, sm: (selectedPlaylist || showAllCharts) ? 0 : 2 }
             }}
           >
-            {renderContent()}
+            <Suspense fallback={<div />}>{renderContent()}</Suspense>
           </Container>
           {currentSong && (
             <>
-              <MusicPlayer 
+              <Suspense fallback={<div />}>
+                <MusicPlayer 
                 songTitle={currentSong.title}
                 artist={currentSong.artist}
                 albumArt={currentSong.albumArt}
@@ -1362,7 +1348,8 @@ function App() {
                 language={currentSong.language}
                 explicitContent={currentSong.explicitContent}
                 source={currentSong.source}
-              />
+                />
+              </Suspense>
             </>
           )}
           <BottomNav activeTab={activeTab} onTabChange={handleTabChange} showLabels={!hideBottomNavText} />
