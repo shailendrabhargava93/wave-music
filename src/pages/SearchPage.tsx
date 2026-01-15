@@ -18,11 +18,12 @@ import {
   Skeleton,
   Container,
 } from '@mui/material';
-import { Search, MusicNote, PlaylistPlay, Album, Person, Clear, History, ClearAll, PlayArrow, QueueMusic, PlaylistAdd, Favorite, MoreVertical } from '../icons';
+import { Search, MusicNote, PlaylistPlay, Album, Person, Clear, History, ClearAll, PlayArrow, QueueMusic, PlaylistAdd, Favorite, MoreVertical, TrendingUp } from '../icons';
 import SongItem from '../components/SongItem';
 import SongItemSkeleton from '../components/SongItemSkeleton';
 // icons now imported from ../icons
 import { saavnApi } from '../services/saavnApi';
+import { getBestImage } from '../utils/normalize';
 import { Song } from '../types/api';
 import { FAVOURITE_SONGS_KEY, persistFavourites, readFavourites } from '../services/storage';
 import { decodeHtmlEntities } from '../utils/normalize';
@@ -64,6 +65,7 @@ const SearchPage: React.FC<SearchPageProps> = ({ onSongSelect, onPlaylistSelect,
     return sessionStorage.getItem('hasSearched') === 'true';
   });
   const [recentSearches, setRecentSearches] = useState<string[]>([]);
+  const [trending, setTrending] = useState<any[]>([]);
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [selectedSong, setSelectedSong] = useState<any>(null);
 
@@ -102,6 +104,15 @@ const SearchPage: React.FC<SearchPageProps> = ({ onSongSelect, onPlaylistSelect,
         // Error loading recent searches
       }
     }
+    // Fetch trending/top searches for the Search page
+    (async () => {
+      try {
+        const resp = await saavnApi.fetchTopSearches(12);
+        setTrending(Array.isArray(resp?.items) ? resp.items : []);
+      } catch (err) {
+        // ignore trending fetch errors
+      }
+    })();
   }, []);
 
   // Save search to recent searches
@@ -118,6 +129,78 @@ const SearchPage: React.FC<SearchPageProps> = ({ onSongSelect, onPlaylistSelect,
       localStorage.setItem('recentSearches', JSON.stringify(updated));
       return updated;
     });
+  };
+
+  // Handle click on trending item based on its type
+  const handleTrendingClick = async (t: any) => {
+    if (!t) return;
+    try {
+      if (t.type === 'query') {
+        setSearchQuery(t.name);
+        await handleSearch(t.name);
+        return;
+      }
+      if (t.type === 'artist') {
+        // Fetch artist details then call onArtistSelect
+        if (!onArtistSelect) return;
+        try {
+          setLoading(true);
+          // Try t.id then common payload fallbacks
+          const artistId = t.id || t.payload?.artistId || t.payload?.artist_id || t.payload?.id;
+          if (!artistId) {
+            // fallback: if name present, perform a search
+            if (t.name) {
+              await handleSearch(t.name);
+            }
+            return;
+          }
+          const resp = await saavnApi.getArtistById(artistId);
+          // Try to pick image
+          const raw = resp?.data || resp;
+          const name = raw?.name || t.name || '';
+          const img = getBestImage(raw?.image || raw?.images || t.image || t.payload?.image || raw?.thumbnail || raw?.cover);
+          onArtistSelect(artistId, name, img);
+        } finally {
+          setLoading(false);
+        }
+        return;
+      }
+      if (t.type === 'album') {
+        // Fetch album details then call onAlbumSelect
+        if (!onAlbumSelect) return;
+        try {
+          setLoading(true);
+          const albumId = t.id || t.payload?.albumId || t.payload?.album_id || t.payload?.id;
+          if (!albumId) {
+            if (t.name) {
+              await handleSearch(t.name);
+            }
+            return;
+          }
+          const resp = await saavnApi.getAlbumById(albumId);
+          const raw = resp?.data || resp;
+          const name = raw?.name || raw?.title || t.name || '';
+          const img = getBestImage(raw?.image || raw?.images || raw?.cover || t.image || t.payload?.image || raw?.thumbnail);
+          onAlbumSelect(albumId, name, img);
+        } finally {
+          setLoading(false);
+        }
+        return;
+      }
+      if (t.type === 'song') {
+        if (onSongSelect) {
+          // If payload exists, pass it; else try to fetch by id
+          if (t.payload) onSongSelect(t.payload);
+          else onSongSelect({ id: t.id, name: t.name, image: t.image });
+        }
+        return;
+      }
+      // Fallback: treat as a query
+      setSearchQuery(t.name || '');
+      await handleSearch(t.name || '');
+    } catch (err) {
+      // ignore
+    }
   };
 
   // Clear all recent searches
@@ -239,18 +322,8 @@ const SearchPage: React.FC<SearchPageProps> = ({ onSongSelect, onPlaylistSelect,
     setHasSearched(false);
   };
 
-  const getHighQualityImage = (images: Array<{ quality: string; url: string }>) => {
-    if (!images || images.length === 0) return '';
-    
-    // Try to get the highest quality image available
-    const qualities = ['500x500', '150x150', '50x50'];
-    for (const quality of qualities) {
-      const img = images.find(img => img.quality === quality);
-      if (img?.url) return img.url;
-    }
-    
-    // Fallback to last available image
-    return images[images.length - 1]?.url || '';
+  const getHighQualityImage = (images: any) => {
+    return getBestImage(images);
   };
 
   const getArtistNames = (song: any): string => {
@@ -383,6 +456,33 @@ const SearchPage: React.FC<SearchPageProps> = ({ onSongSelect, onPlaylistSelect,
           },
         }}
       />
+
+      {/* Trending / Top Searches (only when user hasn't searched yet) */}
+      {!loading && !hasSearched && trending.length > 0 && (
+        <Box sx={{ mb: 3 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+            <TrendingUp sx={{ color: 'text.secondary', fontSize: 18 }} />
+            <Typography variant="subtitle2" sx={{ color: 'text.secondary', fontWeight: 600 }}>Trending</Typography>
+          </Box>
+
+          <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', alignItems: 'center' }}>
+            {trending.map((t, idx) => {
+              const label = t.name || (t.payload && (t.payload.title || t.payload.name)) || 'Unknown';
+              const image = Array.isArray(t.image) ? (t.image[0]?.url || t.image[0]) : t.image;
+              return (
+                <Chip
+                  key={idx}
+                  size="small"
+                  avatar={image ? <Avatar src={image} /> : undefined}
+                  label={label}
+                  onClick={() => handleTrendingClick(t)}
+                  sx={{ height: 32, cursor: 'pointer', textTransform: 'none' }}
+                />
+              );
+            })}
+          </Box>
+        </Box>
+      )}
 
       {/* Recent Searches */}
       {!hasSearched && !loading && recentSearches.length > 0 && (

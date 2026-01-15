@@ -10,7 +10,7 @@ import {
 import { Close, MusicNote, DragIndicator } from '../icons';
 import { Song } from '../types/api';
 import SongItem from './SongItem';
-import { decodeHtmlEntities } from '../utils/normalize';
+import { decodeHtmlEntities, getBestImage } from '../utils/normalize';
 
 interface UpNextDrawerProps {
   open: boolean;
@@ -137,17 +137,7 @@ const UpNextDrawer: React.FC<UpNextDrawerProps> = ({
   const handleMouseDown = (e: React.MouseEvent) => {
     startDragTouch(e.clientY);
   };
-  const getHighQualityImage = (
-    images: Array<{ quality: string; url?: string; link?: string }>
-  ) => {
-    if (!images || images.length === 0) return '';
-    const qualities = ['500x500', '150x150', '50x50'];
-    for (const quality of qualities) {
-      const img = images.find((img) => img.quality === quality);
-      if (img) return img.url || img.link || '';
-    }
-    return images[0]?.url || images[0]?.link || '';
-  };
+  const getHighQualityImage = (images: any) => getBestImage(images);
 
   // use shared `decodeHtmlEntities` from utils
 

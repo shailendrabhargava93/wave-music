@@ -1,5 +1,6 @@
 import { SearchResponse } from '../types/api';
 import { setLastFetchFailed } from './networkStatus';
+import { getBestImage } from '../utils/normalize';
 
 const getInflight = () => {
   if (!(saavnApi as any)._inflight) (saavnApi as any)._inflight = {} as any;
@@ -156,6 +157,70 @@ export const saavnApi = {
       throw error;
     }
   },
+  // List popular/recommended artists with pagination. `excludeIds` can be provided
+  // to skip artists already displayed on the client.
+  listArtists: async (page: number = 0, limit: number = 24, excludeIds: string[] = []): Promise<any> => {
+    try {
+      // The upstream API doesn't directly support exclude; we request a page and filter client-side.
+      const response = await fetch(`${BASE_URL}/artists?page=${page}&limit=${limit}`);
+      if (!response.ok) {
+        throw new Error('Failed to fetch artists');
+      }
+      const data = await response.json();
+      setLastFetchFailed(false);
+      // Filter out excluded ids if provided
+      if (Array.isArray(data?.data)) {
+        data.data = (data.data as any[]).filter(a => !excludeIds.includes(a.id));
+      }
+      return data;
+    } catch (error) {
+      console.error('Error listing artists:', error);
+      markFetchFailed();
+      throw error;
+    }
+  },
+  // Fetch 'new' artists via the search endpoint (query=new) with given page/limit.
+  // Filters out any excludeIds client-side.
+  fetchNewArtists: async (page: number = 0, limit: number = 10, excludeIds: string[] = []) => {
+    try {
+      const response = await fetch(`${BASE_URL}/search/artists?query=new&page=${page}&limit=${limit}`);
+      if (!response.ok) throw new Error('Failed to fetch new artists');
+      const data = await response.json();
+      setLastFetchFailed(false);
+
+      // Possible shapes: { data: [...] } or { data: { artists: [...] } } or { data: { results: [...] } }
+      const rawItems = Array.isArray(data?.data)
+        ? data.data
+        : Array.isArray(data?.data?.artists)
+        ? data.data.artists
+        : Array.isArray(data?.data?.results)
+        ? data.data.results
+        : Array.isArray(data?.results)
+        ? data.results
+        : [];
+
+      // Use shared getBestImage helper for image selection
+
+      // Normalize each artist object to { id, name, image }
+      const normalized = rawItems.map((a: any) => {
+        const id = a.id || a.artist_id || a.artistId || a.sid || a.id_str || 'unknown-' + Math.random().toString(36).slice(2, 9);
+        const name = a.name || a.artistName || a.title || a.displayName || '';
+        let image = '';
+        image = getBestImage(a.image || a.images || a.thumbnail || a.img || a.image_url || a.cover);
+        return { id, name, image };
+      }).filter((it: any) => it && it.id && it.name);
+
+      const filtered = normalized.filter((a: any) => !excludeIds.includes(a.id));
+      if (process.env.NODE_ENV !== 'production') {
+        // eslint-disable-next-line no-console
+        console.debug('fetchNewArtists:', { page, limit, requested: rawItems.length, normalized: normalized.length, returned: filtered.length, sample: filtered[0] });
+      }
+      return { items: filtered, raw: data, rawItems: rawItems };
+    } catch (err) {
+      markFetchFailed();
+      throw err;
+    }
+  },
 
   getArtistSongs: async (artistId: string, page: number = 0, sortBy: string = 'popularity', sortOrder: string = 'desc'): Promise<any> => {
     try {
@@ -308,6 +373,67 @@ export const saavnApi = {
       console.error('Error searching albums:', error);
       markFetchFailed();
       throw error;
+    }
+  },
+
+  // Fetch top/trending searches
+  fetchTopSearches: async (limit: number = 12): Promise<{ items: any[] }> => {
+    try {
+      // Simple in-memory inflight / memo to avoid duplicate calls (React StrictMode double-invoke)
+      const key = `top::${limit}`;
+      if (!(saavnApi as any)._cache) (saavnApi as any)._cache = {};
+      const cache = (saavnApi as any)._cache as Record<string, Promise<{ items: any[] }>>;
+      if (cache[key]) return cache[key];
+
+      const promise = (async () => {
+        const response = await fetch(`${BASE_URL}/search/top?limit=${limit}`);
+        if (!response.ok) throw new Error('Failed to fetch top searches');
+        const data = await response.json();
+        setLastFetchFailed(false);
+
+        // Normalize response. Upstream returns { data: { results: [...] } }
+        const raw = Array.isArray(data?.data?.results) ? data.data.results : Array.isArray(data?.results) ? data.results : Array.isArray(data?.data) ? data.data : [];
+
+        const items = (raw as any[]).map((it: any) => {
+          if (!it) return null;
+          if (typeof it === 'string') return { type: 'query', name: it, payload: it };
+
+          const payload = it;
+          const type = (it.type || '').toLowerCase();
+          const title = it.title || it.name || '';
+          // image may be an array of {quality,url}
+          const image = getBestImage(it.image || it.images || it.cover || it.thumbnail);
+
+          // id fallbacks
+          const id = it.id || it.albumId || it.album_id || it.artistId || it.artist_id || it.sid || it.songId;
+
+          if (type === 'song') return { type: 'song', id: id ? id.toString() : undefined, name: title, image, payload };
+          if (type === 'album') return { type: 'album', id: id ? id.toString() : undefined, name: title, image, payload };
+          if (type === 'artist') return { type: 'artist', id: id ? id.toString() : undefined, name: title, image, payload };
+
+          // fallback: if the item has a url pointing to album/song/artist, infer type from URL path
+          if (it.url && typeof it.url === 'string') {
+            if (it.url.includes('/album/')) return { type: 'album', id: id ? id.toString() : undefined, name: title, image, payload };
+            if (it.url.includes('/song/')) return { type: 'song', id: id ? id.toString() : undefined, name: title, image, payload };
+            if (it.url.includes('/artist/')) return { type: 'artist', id: id ? id.toString() : undefined, name: title, image, payload };
+          }
+
+          return { type: 'query', name: title, payload };
+        }).filter(Boolean);
+
+        return { items };
+      })();
+
+      cache[key] = promise;
+      try {
+        const res = await promise;
+        return res;
+      } finally {
+        // keep the cache to prevent refetch; if you'd prefer to expire, implement TTL
+      }
+    } catch (err) {
+      markFetchFailed();
+      throw err;
     }
   },
 

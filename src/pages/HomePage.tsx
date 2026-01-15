@@ -15,7 +15,7 @@ import Header from '../components/Header';
 import { Song } from '../types/api';
 import { SoundChartsItem } from '../services/soundChartsApi';
 import { saavnApi } from '../services/saavnApi';
-import { decodeHtmlEntities } from '../utils/normalize';
+import { decodeHtmlEntities, getBestImage } from '../utils/normalize';
 // consolidated icons import above
 import { FAVOURITE_SONGS_KEY, persistFavourites, readFavourites, getMeta, setMeta } from '../services/storage';
 
@@ -57,20 +57,7 @@ interface ArtistPreview {
   image?: string;
 }
 
-const getHighQualityImage = (images?: Array<{ quality?: string; url?: string; link?: string }>): string => {
-  if (!images || images.length === 0) return '';
-  const qualities = ['500x500', '150x150', '50x50'];
-  for (const quality of qualities) {
-    const img = images.find(image => image.quality === quality);
-    if (img?.url) return img.url;
-    if (img?.link) return img.link;
-  }
-  const fallback = images.find(image => image.url || image.link);
-  if (fallback) {
-    return fallback.url || fallback.link || '';
-  }
-  return '';
-};
+const getHighQualityImage = (images?: any): string => getBestImage(images);
 
 const normalizeArtistName = (raw?: string): string => {
   const decoded = decodeHtmlEntities(raw || '');

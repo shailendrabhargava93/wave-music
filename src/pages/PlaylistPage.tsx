@@ -24,7 +24,7 @@ import {
   persistFavourites,
   readFavourites,
 } from '../services/storage';
-import { decodeHtmlEntities } from '../utils/normalize';
+import { decodeHtmlEntities, getBestImage } from '../utils/normalize';
 
 const extractSongsFromArtistResponse = (response: any): any[] => {
   if (!response) return [];
@@ -63,19 +63,7 @@ const getArtistNames = (song: any): string => {
   return 'Unknown Artist';
 };
 
-const getHighQualityImage = (imageUrl: string | any[] | any): string => {
-  if (!imageUrl) return '';
-  if (typeof imageUrl === 'string') return imageUrl;
-  if (Array.isArray(imageUrl)) {
-    const highQuality = imageUrl.find((img: any) => img.quality === '500x500' || img.quality === 'high');
-    if (highQuality) return highQuality.url || highQuality.link || '';
-    return imageUrl[imageUrl.length - 1]?.url || imageUrl[imageUrl.length - 1]?.link || '';
-  }
-  if (typeof imageUrl === 'object') {
-    return imageUrl.url || imageUrl.link || '';
-  }
-  return '';
-};
+const getHighQualityImage = (imageUrl: any): string => getBestImage(imageUrl);
 
 interface PlaylistPageProps {
   playlistId: string;
