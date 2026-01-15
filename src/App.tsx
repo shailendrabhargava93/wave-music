@@ -30,6 +30,7 @@ import {
   normalizeArtist,
   similarityScore,
 } from './utils/normalize';
+import { getBestImage } from './utils/normalize';
 
 
 interface ChartSongWithSaavn extends SoundChartsItem {
@@ -663,17 +664,7 @@ function App() {
       
       const songDetails = songDetailsResponse.data[0];
       
-      const getHighQualityImage = (images: Array<{ quality: string; url?: string; link?: string }>) => {
-        if (!images || images.length === 0) return '';
-        const qualities = ['500x500', '150x150', '50x50'];
-        for (const quality of qualities) {
-          const img = images.find(img => img.quality === quality);
-          if (img) {
-            return img.url || img.link || '';
-          }
-        }
-        return images[images.length - 1]?.url || images[images.length - 1]?.link || '';
-      };
+      const getHighQualityImage = (images: any) => getBestImage(images);
 
       const getHighQualityAudio = (downloadUrls: Array<{ quality: string; url?: string; link?: string }>) => {
         if (!downloadUrls || downloadUrls.length === 0) return '';

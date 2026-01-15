@@ -9,7 +9,7 @@ import { ArrowBack, PlayArrow, Album, QueueMusic, PlaylistAdd, Verified, Languag
 import { saavnApi } from '../services/saavnApi';
 import { FAVOURITE_SONGS_KEY, persistFavourites, readFavourites } from '../services/storage';
 import SongItem from '../components/SongItem';
-import { decodeHtmlEntities, joinArtistNames } from '../utils/normalize';
+import { decodeHtmlEntities, joinArtistNames, formatCountShort, getBestImage } from '../utils/normalize';
 
 interface ArtistPageProps {
   artistId: string;
@@ -62,24 +62,10 @@ const ArtistPage: React.FC<ArtistPageProps> = ({ artistId, artistName, artistIma
   const getImageFromData = () => {
     if (artistImage) return artistImage;
     if (!artistData) return '';
-    if (Array.isArray(artistData.image) && artistData.image.length > 0) {
-      // pick the first valid url
-      const img = artistData.image.find((i: any) => i?.url || i?.link);
-      return img?.url || img?.link || '';
-    }
-    return '';
+    return getBestImage(artistData.image || artistData.images || artistData.thumbnail || artistData.cover || artistData.img);
   };
 
-  const getHighQualityImage = (images: any[]) => {
-    if (!Array.isArray(images) || images.length === 0) return '';
-    const preferred = ['500x500', '320x320', '150x150', '50x50'];
-    for (const q of preferred) {
-      const img = images.find((i: any) => (i?.quality === q) || (i?.url && i.url.includes(q)));
-      if (img) return img.url || img.link || '';
-    }
-    const first = images[0];
-    return first?.url || first?.link || '';
-  };
+  const getHighQualityImage = (images: any) => getBestImage(images);
 
   const mainContent = (
     <Box sx={{ pb: 14, minHeight: '100vh' }}>
@@ -108,11 +94,11 @@ const ArtistPage: React.FC<ArtistPageProps> = ({ artistId, artistName, artistIma
 
             <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', flexWrap: 'wrap', mt: 0.5 }}>
               {!loading && typeof artistData?.followerCount !== 'undefined' ? (
-                <Chip size="small" icon={<Favorite />} label={`${artistData.followerCount.toLocaleString()} followers`} />
+                <Chip size="small" icon={<Favorite />} label={`${formatCountShort(artistData.followerCount)} followers`} />
               ) : loading ? <Skeleton variant="rectangular" width={120} height={28} /> : null}
 
               {!loading && artistData?.fanCount ? (
-                <Chip size="small" label={`${Number(artistData.fanCount).toLocaleString()} fans`} />
+                <Chip size="small" label={`${formatCountShort(artistData.fanCount)} fans`} />
               ) : loading ? <Skeleton variant="rectangular" width={90} height={28} /> : null}
 
               {!loading && artistData?.dominantLanguage ? (
