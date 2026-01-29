@@ -372,6 +372,8 @@ const ArtistPage: React.FC<ArtistPageProps> = ({ artistId, artistName, artistIma
   );
 
   // Use SongContextMenu for per-song actions
+  const handleMenuClose = () => { setMenuAnchor(null); setMenuTarget(null); };
+
   const SongMenu = (
     <SongContextMenu
       anchorEl={menuAnchor}
@@ -447,7 +449,6 @@ const ArtistPage: React.FC<ArtistPageProps> = ({ artistId, artistName, artistIma
   );
 
   // Render SongMenu and More dialog anchored to menuAnchor/menuTarget
-  const handleMenuClose = () => { setMenuAnchor(null); setMenuTarget(null); };
 
   return (
     <>
